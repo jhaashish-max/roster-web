@@ -895,6 +895,24 @@ body {
 
 
 
+/* Toast Notifications */
+.toast {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 500;
+  z-index: 200;
+  box-shadow: var(--shadow-lg);
+  animation: slideIn 0.3s ease;
+}
+
 @keyframes slideIn {
   from {
     transform: translateX(100%);
