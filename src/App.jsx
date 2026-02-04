@@ -27,10 +27,12 @@ import {
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend } from 'date-fns';
 import { supabase, fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam } from './lib/supabase';
 
-// N8n Webhook URL - Using Vite proxy to bypass CORS
-// N8n Webhook URL - Using Vite proxy to bypass CORS
-const N8N_WEBHOOK_URL = '/api/n8n/webhook/8211a001-8f9e-4387-9289-1538db922fa9';
-const N8N_AUTH_WEBHOOK_URL = '/api/n8n/webhook/cd0f5c69-c0fc-4272-a662-7a0e33698c7b';
+// N8n Webhook URL - Using Vite proxy to bypass CORS in Dev, Direct URL in Prod
+const IS_DEV = import.meta.env.DEV;
+const BASE_URL = IS_DEV ? '/api/n8n' : 'https://n8n-conc.razorpay.com';
+
+const N8N_WEBHOOK_URL = `${BASE_URL}/webhook/8211a001-8f9e-4387-9289-1538db922fa9`;
+const N8N_AUTH_WEBHOOK_URL = `${BASE_URL}/webhook/cd0f5c69-c0fc-4272-a662-7a0e33698c7b`;
 
 // Default prompt template for roster generation
 const DEFAULT_PROMPT = `You are a Roster Manager. Generate a JSON schedule for the '{{TEAM_NAME}}' team for {{MONTH_NAME}} {{YEAR}}.
