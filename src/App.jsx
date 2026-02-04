@@ -266,6 +266,7 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
     if (status === 'PL' || status === 'SL') return 'cell-leave';
     if (status === 'WO') return 'cell-wo';
     if (status === 'WFH') return 'cell-wfh';
+    if (status === 'WL') return 'cell-wl';
     return 'cell-other';
   };
 
@@ -344,6 +345,8 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
         <div className="legend-item"><span className="legend-dot cell-night"></span> Night</div>
         <div className="legend-item"><span className="legend-dot cell-leave"></span> Leave</div>
         <div className="legend-item"><span className="legend-dot cell-wo"></span> Week Off</div>
+        <div className="legend-item"><span className="legend-dot cell-wl"></span> WL (Wellness)</div>
+        <div className="legend-item"><span className="legend-dot cell-wfh"></span> WFH</div>
       </div>
 
       {loading ? (
@@ -959,7 +962,7 @@ function App() {
       if (result.success) {
         setIsAdmin(true);
         setPasswordModalOpen(false);
-        setToast({ message: 'Admin mode enabled', type: 'success' });
+        setToast({ message: 'Admin Access Granted 🔓', type: 'success' });
       } else {
         setToast({ message: result.message || 'Invalid password', type: 'error' });
       }

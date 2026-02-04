@@ -14,7 +14,7 @@ const CellEditor = ({ value, onChange, onFinish }) => {
         { value: '09:00 - 18:00', label: '09:00 - 18:00' },
         { value: '11:00 - 20:00', label: '11:00 - 20:00' },
         { value: 'WFH', label: 'WFH' },
-        { value: 'WL', label: 'WL (Work Leave)' },
+        { value: 'WL', label: 'WL (Wellness)' },
         { value: 'OH', label: 'OH (Optional Holiday)' }
     ];
 

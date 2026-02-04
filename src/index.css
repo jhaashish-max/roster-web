@@ -24,6 +24,7 @@
   --leave: #ef4444;
   --wo: #6b7280;
   --wfh: #f59e0b;
+  --wl: #ec4899;
 
   --border-color: rgba(255, 255, 255, 0.08);
   --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
@@ -56,6 +57,7 @@
   --leave: #dc2626;
   --wo: #4b5563;
   --wfh: #d97706;
+  --wl: #db2777;
 }
 
 * {
@@ -1483,4 +1485,18 @@ body {
 .agent-name-row {
   display: flex;
   align-items: center;
+}
+
+/* WL (Wellness Leave) Styles */
+.cell-wl {
+  background: rgba(236, 72, 153, 0.1);
+}
+
+.cell-wl .cell-text {
+  color: var(--wl);
+  background: rgba(236, 72, 153, 0.2);
+}
+
+.legend-dot.cell-wl {
+  background: var(--wl);
 }
