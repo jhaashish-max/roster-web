@@ -5,6 +5,8 @@
   --bg-secondary: #12121a;
   --bg-card: #1a1a24;
   --bg-hover: #22222e;
+  --bg-modal: #1a1a24;
+  --bg-overlay: rgba(0, 0, 0, 0.85);
 
   --text-primary: #f4f4f5;
   --text-secondary: #a1a1aa;
@@ -25,6 +27,35 @@
 
   --border-color: rgba(255, 255, 255, 0.08);
   --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+
+  --weekend-header: #1e1e2a;
+  --weekend-cell: rgba(255, 255, 255, 0.02);
+}
+
+.light-mode {
+  --bg-primary: #f3f4f6;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f9fafb;
+  --bg-modal: #ffffff;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+
+  --border-color: #e5e7eb;
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+  --weekend-header: #f3f4f6;
+  --weekend-cell: rgba(0, 0, 0, 0.02);
+
+  --morning: #2563eb;
+  --afternoon: #9333ea;
+  --night: #334155;
+  --leave: #dc2626;
+  --wo: #4b5563;
+  --wfh: #d97706;
 }
 
 * {
@@ -39,6 +70,7 @@ body {
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 /* Scrollbar */
@@ -52,12 +84,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+  background: var(--border-color);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+  background: var(--text-muted);
 }
 
 /* Layout */
@@ -175,7 +207,7 @@ body {
 }
 
 .btn-secondary:hover {
-  background: #2a2a36;
+  background: var(--bg-card);
 }
 
 .btn-generate {
@@ -505,11 +537,11 @@ body {
 }
 
 .weekend-header {
-  background: #1e1e2a !important;
+  background: var(--weekend-header) !important;
 }
 
 .weekend-cell {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--weekend-cell);
 }
 
 .sticky-col {
@@ -690,7 +722,7 @@ body {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: var(--bg-overlay);
   backdrop-filter: blur(4px);
   z-index: 100;
   display: flex;
@@ -793,23 +825,73 @@ body {
   color: var(--text-primary);
 }
 
-/* Toast Notifications */
-.toast {
-  position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1rem 1.5rem;
+/* Cell Editor */
+.cell-select {
+  width: 100%;
+  min-width: 110px;
+  padding: 0.35rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--accent-primary);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+}
+
+.cell-editor-input-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-weight: 500;
-  z-index: 200;
-  box-shadow: var(--shadow-lg);
-  animation: slideIn 0.3s ease;
 }
+
+.cell-editor-input-wrapper .cell-input {
+  width: 100%;
+  padding-right: 20px;
+  /* Space for back button */
+}
+
+.cell-editor-back-btn {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.cell-editor-back-btn:hover {
+  color: var(--accent-primary);
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: 2px solid var(--accent-primary);
+  border-color: transparent;
+  background: var(--bg-card);
+}
+
+
 
 @keyframes slideIn {
   from {

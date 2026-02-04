@@ -24,6 +24,8 @@ import {
   Maximize2,
   Minimize2
 } from 'lucide-react';
+import CellEditor from './components/CellEditor';
+import { Sun, Moon } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend } from 'date-fns';
 import { supabase, fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam } from './lib/supabase';
 
@@ -397,11 +399,9 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
                         onClick={(e) => handleCellClick(agent, dateStr, e)}
                       >
                         {isAdmin ? (
-                          <input
-                            className="cell-input"
-                            defaultValue={status}
-                            onBlur={(e) => handleCellBlur(agent, dateStr, e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
+                          <CellEditor
+                            value={status}
+                            onFinish={(newVal) => handleCellBlur(agent, dateStr, newVal)}
                           />
                         ) : (
                           <span className="cell-text">{status}</span>
@@ -873,6 +873,22 @@ function App() {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
 
+  // Theme State
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light-mode');
+    } else {
+      document.body.classList.remove('light-mode');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
   const [rosterData, setRosterData] = useState([]);
   const [rosterExists, setRosterExists] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1063,6 +1079,11 @@ function App() {
               </button>
             </>
           )}
+
+          <button className="btn btn-secondary" onClick={toggleTheme} style={{ justifyContent: 'center' }}>
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            {theme === 'dark' ? ' Light Mode' : ' Dark Mode'}
+          </button>
 
           <button className="btn btn-refresh" onClick={loadRoster}>
             <RefreshCw size={18} /> Refresh
