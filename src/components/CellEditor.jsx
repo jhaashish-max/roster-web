@@ -19,12 +19,13 @@ const CellEditor = ({ value, onChange, onFinish }) => {
     ];
 
     useEffect(() => {
+        setCurrentValue(value);
         // If initial value is not in options, switch to input mode
         const isKnown = OPTIONS.some(opt => opt.value === value);
         if (!isKnown && value) {
             setMode('input');
         }
-    }, []);
+    }, [value]);
 
     const handleSelectChange = (e) => {
         const val = e.target.value;
