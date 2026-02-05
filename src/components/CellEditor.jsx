@@ -32,7 +32,7 @@ const CellEditor = ({ value, onChange, onFinish }) => {
             setMode('input');
             setTimeout(() => inputRef.current?.focus(), 0);
         } else {
-            onChange(val); // Update immediately logic or wait for blur? 
+            if (onChange) onChange(val); // Update immediately logic or wait for blur? 
             // Usually immediate update is better for select
             if (onFinish) onFinish(val);
         }
@@ -62,7 +62,7 @@ const CellEditor = ({ value, onChange, onFinish }) => {
                     value={currentValue}
                     onChange={(e) => {
                         setCurrentValue(e.target.value);
-                        onChange(e.target.value);
+                        if (onChange) onChange(e.target.value);
                     }}
                     onBlur={handleInputBlur}
                     onKeyDown={handleKeyDown}
