@@ -22,9 +22,11 @@ import {
   Plus,
   Save,
   Maximize2,
-  Minimize2
+  Minimize2,
+  PieChart
 } from 'lucide-react';
 import CellEditor from './components/CellEditor';
+import Summary from './components/Summary';
 import { Sun, Moon } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend } from 'date-fns';
 import { supabase, fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam } from './lib/supabase';
@@ -1062,6 +1064,12 @@ function App() {
           >
             <TableIcon size={20} /> Roster View
           </button>
+          <button
+            className={`nav-item ${view === 'summary' ? 'active' : ''}`}
+            onClick={() => setView('summary')}
+          >
+            <PieChart size={20} /> Summary
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -1130,8 +1138,8 @@ function App() {
                 }}
                 className="form-select"
               >
-                {/* Only Show All Groups option in Dashboard view */}
-                {view === 'dashboard' && <option value="all-groups">All Groups</option>}
+                {/* Show All Groups option in Dashboard and Summary view */}
+                {(view === 'dashboard' || view === 'summary') && <option value="all-groups">All Groups</option>}
 
                 {teams.map(t => (
                   <option key={t.id} value={t.name}>{t.name}</option>
@@ -1158,6 +1166,13 @@ function App() {
             isAdmin={isAdmin}
             loading={loading}
             onCellUpdate={handleCellUpdate}
+          />
+        )}
+        {view === 'summary' && (
+          <Summary
+            currentDate={currentDate}
+            selectedTeam={selectedTeam}
+            viewMode={viewMode}
           />
         )}
       </main>

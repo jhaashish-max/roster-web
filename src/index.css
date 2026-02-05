@@ -1515,6 +1515,115 @@ body {
   background: rgba(236, 72, 153, 0.2);
 }
 
-.legend-dot.cell-wl {
-  background: var(--wl);
+/* ... Previous styles ... */
+
+/* Summary View Styles */
+.summary-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+  overflow: hidden;
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0.5rem;
+}
+
+.filter-controls {
+  display: flex;
+  gap: 0.5rem;
+  background: var(--bg-card);
+  padding: 0.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.btn-filter {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-filter:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.btn-filter.active {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.custom-range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--bg-card);
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  width: fit-content;
+}
+
+.date-input {
+  width: auto;
+  padding: 0.4rem 0.6rem;
+}
+
+.summary-table-wrapper {
+  flex: 1;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+}
+
+.summary-table th,
+.summary-table td {
+  padding: 1rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 30px;
+  text-align: center;
+}
+
+.status-pl {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--leave);
+}
+
+.status-wo {
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--wo);
+}
+
+.status-wl {
+  background: rgba(236, 72, 153, 0.1);
+  color: var(--wl);
+}
+
+.status-wfh {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--wfh);
+}
+
+.status-oh {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--accent-primary);
 }
