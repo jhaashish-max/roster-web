@@ -161,6 +161,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
       night: todayData.filter(d => d.Status === '18:00 - 03:00').length,
       leave: todayData.filter(d => d.Status === 'PL' || d.Status === 'SL' || d.Status === 'WFH').length,
       wo: todayData.filter(d => d.Status === 'WO').length,
+      wl: todayData.filter(d => d.Status === 'WL').length,
     };
   }, [todayData]);
 
@@ -171,6 +172,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
     <div className="dashboard-container">
       <div className="dashboard-header">
         <LiveClock />
+
         {headerAction}
       </div>
 
@@ -187,33 +189,41 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
         </div>
       ) : (
         <>
-          <div className="metrics-bar">
-            <div className="metric">
-              <span className="metric-value">{stats.working}</span>
-              <span className="metric-label">Working</span>
+
+
+
+          {/* Hero Stats Cards */}
+          <div className="stats-hero-grid">
+            <div className="stat-card">
+              <h3>Working</h3>
+              <div className="stat-value">{stats.working}</div>
             </div>
-            <div className="metric-divider" />
-            <div className="metric metric-morning">
-              <span className="metric-value">{stats.morning}</span>
-              <span className="metric-label">Morning</span>
+            <div className="stat-card">
+              <h3>Morning</h3>
+              <div className="stat-value" style={{ color: 'var(--morning)' }}>{stats.morning}</div>
             </div>
-            <div className="metric metric-afternoon">
-              <span className="metric-value">{stats.afternoon}</span>
-              <span className="metric-label">Afternoon</span>
+            <div className="stat-card">
+              <h3>Afternoon</h3>
+              <div className="stat-value" style={{ color: 'var(--afternoon)' }}>{stats.afternoon}</div>
             </div>
-            <div className="metric metric-night">
-              <span className="metric-value">{stats.night}</span>
-              <span className="metric-label">Night</span>
+            <div className="stat-card">
+              <h3>Night</h3>
+              <div className="stat-value" style={{ color: 'var(--night)' }}>{stats.night}</div>
             </div>
-            <div className="metric-divider" />
-            <div className="metric metric-leave">
-              <span className="metric-value">{stats.leave}</span>
-              <span className="metric-label">Leave</span>
+            <div className="stat-card">
+              <h3>Leave</h3>
+              <div className="stat-value" style={{ color: 'var(--leave)' }}>{stats.leave}</div>
             </div>
-            <div className="metric metric-wo">
-              <span className="metric-value">{stats.wo}</span>
-              <span className="metric-label">WO</span>
+            <div className="stat-card">
+              <h3>WO</h3>
+              <div className="stat-value" style={{ color: 'var(--text-muted)' }}>{stats.wo}</div>
             </div>
+            {stats.wl > 0 && (
+              <div className="stat-card">
+                <h3>WL</h3>
+                <div className="stat-value" style={{ color: '#f59e0b' }}>{stats.wl}</div>
+              </div>
+            )}
           </div>
 
           <div className="panel-grid">
@@ -1088,6 +1098,9 @@ function App() {
       setRosterData(prev => prev.map(row =>
         row.Date === date && row.Name === name ? { ...row, Status: status } : row
       ));
+      setAllTeamsData(prev => prev.map(row =>
+        row.Date === date && row.Name === name ? { ...row, Status: status } : row
+      ));
     } catch (error) {
       setToast({ message: 'Failed to update cell', type: 'error' });
     }
@@ -1166,21 +1179,14 @@ function App() {
             <RefreshCw size={18} /> Refresh
           </button>
 
-          <button
-            className="btn btn-secondary cmd-hint"
-            onClick={() => setCommandPaletteOpen(true)}
-            style={{ justifyContent: 'space-between' }}
-          >
-            <span>Quick Actions</span>
-            <kbd className="kbd-hint">⌘K</kbd>
-          </button>
+
 
           {!isAdmin ? (
             <button
               className="btn btn-admin"
               onClick={() => setPasswordModalOpen(true)}
             >
-              <Settings size={18} /> Empower Admin
+              <Settings size={18} /> Admin mode
             </button>
           ) : (
             <button

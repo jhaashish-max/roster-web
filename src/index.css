@@ -260,7 +260,7 @@ body {
 /* Main Content */
 .main-content {
   flex: 1;
-  padding: 2rem;
+  padding: 2.5rem 2rem 2rem 2rem;
   overflow-y: auto;
   background: var(--bg-primary);
 }
@@ -276,7 +276,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
 }
 
 .dashboard-title {
@@ -296,6 +296,46 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+}
+
+/* Hero Stats Grid */
+.stats-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--text-muted);
+}
+
+.stat-card h3 {
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.stat-card .stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-primary);
 }
 
 .clock-date {
@@ -422,9 +462,10 @@ body {
   gap: 0.25rem;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1.25rem;
+  border-radius: 12px;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0;
+  width: fit-content;
 }
 
 .metric {
@@ -432,7 +473,7 @@ body {
   flex-direction: column;
   align-items: center;
   padding: 0 0.75rem;
-  min-width: 60px;
+  min-width: unset;
 }
 
 .metric-value {
