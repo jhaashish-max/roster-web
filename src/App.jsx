@@ -121,8 +121,33 @@ const LiveClock = () => {
   );
 };
 
+// Team Selector Component
+const TeamSelector = ({ teams, selectedTeam, viewMode, setViewMode, setSelectedTeam, showAllOption }) => (
+  <div className="team-selector-inline">
+    <label>Team:</label>
+    <select
+      value={viewMode === 'all' ? 'all-groups' : selectedTeam}
+      onChange={(e) => {
+        const val = e.target.value;
+        if (val === 'all-groups') {
+          setViewMode('all');
+        } else {
+          setViewMode('single');
+          setSelectedTeam(val);
+        }
+      }}
+      className="form-select"
+    >
+      {showAllOption && <option value="all-groups">All Groups</option>}
+      {teams.map(t => (
+        <option key={t.id} value={t.name}>{t.name}</option>
+      ))}
+    </select>
+  </div>
+);
+
 // 1. DASHBOARD
-const Dashboard = ({ rosterData, currentDate, onChangeDate, loading }) => {
+const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerAction }) => {
   const todayStr = format(currentDate, 'yyyy-MM-dd');
   const todayData = rosterData.filter(d => d.Date === todayStr);
 
@@ -146,6 +171,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading }) => {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <LiveClock />
+        {headerAction}
       </div>
 
       {loading ? (
@@ -251,7 +277,7 @@ const getShiftClass = (status) => {
 };
 
 // 2. ROSTER TABLE
-const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, onCellUpdate }) => {
+const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, onCellUpdate, headerAction }) => {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
   const startDate = new Date(year, month - 1, 1);
@@ -334,7 +360,10 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
   return (
     <div className="roster-page">
       <div className="roster-header">
-        <h1 className="dashboard-title">Monthly Roster</h1>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <h1 className="dashboard-title">Monthly Roster</h1>
+          {headerAction}
+        </div>
         <div className="date-nav">
           <button className="date-nav-btn" onClick={() => onChangeDate(subMonths(currentDate, 1))}>
             <ChevronLeft size={20} />
@@ -1165,43 +1194,24 @@ function App() {
       </aside>
 
       {/* Main Content */}
+      {/* Main Content */}
       <main className="main-content">
-        {/* Team Selector Bar */}
-        {teams.length > 0 && (
-          <div className="team-bar">
-            <div className="team-selector">
-              <label>Team:</label>
-              <select
-                value={viewMode === 'all' ? 'all-groups' : selectedTeam}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === 'all-groups') {
-                    setViewMode('all');
-                  } else {
-                    setViewMode('single');
-                    setSelectedTeam(val);
-                  }
-                }}
-                className="form-select"
-              >
-                {/* Show All Groups option in Dashboard and Summary view */}
-                {(view === 'dashboard' || view === 'summary') && <option value="all-groups">All Groups</option>}
-
-                {teams.map(t => (
-                  <option key={t.id} value={t.name}>{t.name}</option>
-                ))}
-              </select>
-            </div>
-            {/* Toggle removed as requested */}
-          </div>
-        )}
-
         {view === 'dashboard' && (
           <Dashboard
             rosterData={viewMode === 'all' ? allTeamsData : rosterData}
             currentDate={currentDate}
             onChangeDate={handleDateChange}
             loading={loading}
+            headerAction={
+              <TeamSelector
+                teams={teams}
+                selectedTeam={selectedTeam}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                setSelectedTeam={setSelectedTeam}
+                showAllOption={true}
+              />
+            }
           />
         )}
         {view === 'roster' && (
@@ -1212,6 +1222,16 @@ function App() {
             isAdmin={isAdmin}
             loading={loading}
             onCellUpdate={handleCellUpdate}
+            headerAction={
+              <TeamSelector
+                teams={teams}
+                selectedTeam={selectedTeam}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                setSelectedTeam={setSelectedTeam}
+                showAllOption={false}
+              />
+            }
           />
         )}
         {view === 'summary' && (
@@ -1219,6 +1239,16 @@ function App() {
             currentDate={currentDate}
             selectedTeam={selectedTeam}
             viewMode={viewMode}
+            headerAction={
+              <TeamSelector
+                teams={teams}
+                selectedTeam={selectedTeam}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                setSelectedTeam={setSelectedTeam}
+                showAllOption={true}
+              />
+            }
           />
         )}
       </main>

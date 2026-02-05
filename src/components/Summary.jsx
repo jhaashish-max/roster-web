@@ -3,7 +3,7 @@ import { format, startOfWeek, endOfWeek, isWithinInterval, parseISO, startOfMont
 import { Download, Loader, Moon } from 'lucide-react';
 import { fetchRoster, fetchAllTeamsRoster } from '../lib/supabase';
 
-const Summary = ({ currentDate, selectedTeam, viewMode }) => {
+const Summary = ({ currentDate, selectedTeam, viewMode, headerAction }) => {
     // Initialize with current month
     const [dateRange, setDateRange] = useState({
         start: format(startOfMonth(currentDate), 'yyyy-MM-dd'),
@@ -166,6 +166,7 @@ const Summary = ({ currentDate, selectedTeam, viewMode }) => {
             <div className="summary-header">
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <h2>Summary</h2>
+                    {headerAction}
                     <div className="filter-controls">
                         <button className="btn-filter" onClick={setMonthRange}>Current Month</button>
                         <button className="btn-filter" onClick={setWeekRange}>This Week</button>
