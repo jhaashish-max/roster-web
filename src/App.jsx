@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import CellEditor from './components/CellEditor';
 import Summary from './components/Summary';
+import CommandPalette from './components/CommandPalette';
 import { Sun, Moon } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend } from 'date-fns';
 import { supabase, fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam } from './lib/supabase';
@@ -76,6 +77,16 @@ Return a flat array of objects. Do not use Markdown, do not include comments.
 
 // --- COMPONENTS ---
 
+// Generate consistent color from name (like Slack)
+const getAvatarColor = (name) => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash % 360);
+  return `hsl(${hue}, 65%, 55%)`;
+};
+
 // Toast Notification
 const Toast = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -89,6 +100,23 @@ const Toast = ({ message, type, onClose }) => {
       {type === 'error' && <AlertCircle size={18} />}
       {type === 'loading' && <Loader2 size={18} className="spin" />}
       {message}
+    </div>
+  );
+};
+
+// Live Clock Component
+const LiveClock = () => {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="live-clock">
+      <div className="clock-date">{format(now, 'EEEE, MMMM d, yyyy')}</div>
+      <div className="clock-time">{format(now, 'HH:mm:ss')}</div>
     </div>
   );
 };
@@ -117,22 +145,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading }) => {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <div>
-          <h1 className="dashboard-title">Dashboard</h1>
-          <p className="dashboard-subtitle">Enterprise + VAS Team Overview</p>
-        </div>
-        <div className="date-nav">
-          <button className="date-nav-btn" onClick={() => onChangeDate(subMonths(currentDate, 1))}>
-            <ChevronLeft size={20} />
-          </button>
-          <div className="date-display">
-            <Calendar size={18} />
-            {format(currentDate, 'MMMM yyyy')}
-          </div>
-          <button className="date-nav-btn" onClick={() => onChangeDate(addMonths(currentDate, 1))}>
-            <ChevronRight size={20} />
-          </button>
-        </div>
+        <LiveClock />
       </div>
 
       {loading ? (
@@ -148,34 +161,32 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading }) => {
         </div>
       ) : (
         <>
-          <div className="stats-grid">
-            <div className="stat-card stat-card-primary">
-              <div className="stat-icon"><Users size={24} /></div>
-              <div className="stat-content">
-                <div className="stat-value">{stats.working}</div>
-                <div className="stat-label">Working Today</div>
-              </div>
+          <div className="metrics-bar">
+            <div className="metric">
+              <span className="metric-value">{stats.working}</span>
+              <span className="metric-label">Working</span>
             </div>
-            <div className="stat-card stat-card-morning">
-              <div className="stat-icon"><Clock size={24} /></div>
-              <div className="stat-content">
-                <div className="stat-value">{stats.morning}</div>
-                <div className="stat-label">Morning (09:00)</div>
-              </div>
+            <div className="metric-divider" />
+            <div className="metric metric-morning">
+              <span className="metric-value">{stats.morning}</span>
+              <span className="metric-label">Morning</span>
             </div>
-            <div className="stat-card stat-card-afternoon">
-              <div className="stat-icon"><Clock size={24} /></div>
-              <div className="stat-content">
-                <div className="stat-value">{stats.afternoon}</div>
-                <div className="stat-label">Afternoon (11:00)</div>
-              </div>
+            <div className="metric metric-afternoon">
+              <span className="metric-value">{stats.afternoon}</span>
+              <span className="metric-label">Afternoon</span>
             </div>
-            <div className="stat-card stat-card-night">
-              <div className="stat-icon"><Clock size={24} /></div>
-              <div className="stat-content">
-                <div className="stat-value">{stats.night}</div>
-                <div className="stat-label">Night (18:00)</div>
-              </div>
+            <div className="metric metric-night">
+              <span className="metric-value">{stats.night}</span>
+              <span className="metric-label">Night</span>
+            </div>
+            <div className="metric-divider" />
+            <div className="metric metric-leave">
+              <span className="metric-value">{stats.leave}</span>
+              <span className="metric-label">Leave</span>
+            </div>
+            <div className="metric metric-wo">
+              <span className="metric-value">{stats.wo}</span>
+              <span className="metric-label">WO</span>
             </div>
           </div>
 
@@ -188,7 +199,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading }) => {
               <div className="shift-list">
                 {workingAgents.length > 0 ? workingAgents.map((a, i) => (
                   <div key={i} className="shift-item">
-                    <div className="agent-avatar">{a.Name.charAt(0)}</div>
+                    <div className="agent-avatar" style={{ background: getAvatarColor(a.Name) }}>{a.Name.charAt(0)}</div>
                     <div className="agent-info">
                       <div className="agent-name-row">
                         <div className="agent-name">{a.Name}</div>
@@ -210,7 +221,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading }) => {
                 <div className="leave-list">
                   {onLeave.map((p, i) => (
                     <div key={i} className="leave-item">
-                      <div className="agent-avatar leave-avatar">{p.Name.charAt(0)}</div>
+                      <div className="agent-avatar" style={{ background: getAvatarColor(p.Name) }}>{p.Name.charAt(0)}</div>
                       <div className="agent-info">
                         <div className="agent-name-row">
                           <div className="agent-name">{p.Name}</div>
@@ -323,10 +334,7 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
   return (
     <div className="roster-page">
       <div className="roster-header">
-        <div>
-          <h1 className="dashboard-title">Monthly Roster</h1>
-          <p className="dashboard-subtitle">Enterprise + VAS Team</p>
-        </div>
+        <h1 className="dashboard-title">Monthly Roster</h1>
         <div className="date-nav">
           <button className="date-nav-btn" onClick={() => onChangeDate(subMonths(currentDate, 1))}>
             <ChevronLeft size={20} />
@@ -341,14 +349,14 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
         </div>
       </div>
 
-      <div className="legend">
-        <div className="legend-item"><span className="legend-dot cell-morning"></span> Morning</div>
-        <div className="legend-item"><span className="legend-dot cell-afternoon"></span> Afternoon</div>
-        <div className="legend-item"><span className="legend-dot cell-night"></span> Night</div>
-        <div className="legend-item"><span className="legend-dot cell-leave"></span> Leave</div>
-        <div className="legend-item"><span className="legend-dot cell-wo"></span> Week Off</div>
-        <div className="legend-item"><span className="legend-dot cell-wl"></span> WL (Wellness)</div>
-        <div className="legend-item"><span className="legend-dot cell-wfh"></span> WFH</div>
+      <div className="legend-chips">
+        <span className="legend-chip chip-morning">Morning</span>
+        <span className="legend-chip chip-afternoon">Afternoon</span>
+        <span className="legend-chip chip-night">Night</span>
+        <span className="legend-chip chip-leave">Leave</span>
+        <span className="legend-chip chip-wo">WO</span>
+        <span className="legend-chip chip-wl">WL</span>
+        <span className="legend-chip chip-wfh">WFH</span>
       </div>
 
       {loading ? (
@@ -370,10 +378,12 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
                 <th className="sticky-col corner-cell">Agent</th>
                 {days.map(day => {
                   const dateStr = format(day, 'yyyy-MM-dd');
+                  const todayStr = format(new Date(), 'yyyy-MM-dd');
+                  const isToday = dateStr === todayStr;
                   return (
                     <th
                       key={day.toString()}
-                      className={`${isWeekend(day) ? 'weekend-header' : ''} ${isColumnSelected(dateStr) ? 'selected-header' : ''}`}
+                      className={`${isWeekend(day) ? 'weekend-header' : ''} ${isColumnSelected(dateStr) ? 'selected-header' : ''} ${isToday ? 'today-col' : ''}`}
                       onClick={(e) => handleColumnClick(dateStr, e)}
                     >
                       <div className="day-num">{format(day, 'd')}</div>
@@ -878,6 +888,21 @@ function App() {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
 
+  // Command Palette State
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // ⌘K keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(prev => !prev);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Theme State
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
 
@@ -1044,6 +1069,18 @@ function App() {
       {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onNavigate={(destination) => setView(destination)}
+        onAction={(action) => {
+          if (action === 'toggle-theme') toggleTheme();
+          if (action === 'refresh') loadRoster();
+        }}
+        darkMode={theme === 'dark'}
+      />
+
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo">
@@ -1098,6 +1135,15 @@ function App() {
 
           <button className="btn btn-refresh" onClick={loadRoster}>
             <RefreshCw size={18} /> Refresh
+          </button>
+
+          <button
+            className="btn btn-secondary cmd-hint"
+            onClick={() => setCommandPaletteOpen(true)}
+            style={{ justifyContent: 'space-between' }}
+          >
+            <span>Quick Actions</span>
+            <kbd className="kbd-hint">⌘K</kbd>
           </button>
 
           {!isAdmin ? (
