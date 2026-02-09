@@ -297,7 +297,10 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
                       <div key={i} className="leave-item">
                         <div className="agent-avatar" style={{ background: getAvatarColor(p.Name) }}>{p.Name.charAt(0)}</div>
                         <div className="agent-info">
-                          <div className="agent-name">{p.Name}</div>
+                          <div className="agent-name-row">
+                            <div className="agent-name">{p.Name}</div>
+                            {p.Team && <span className="team-tag">{p.Team}</span>}
+                          </div>
                           <div className={`shift-time ${getShiftClass(p.Status)}`}>{p.Status}</div>
                         </div>
                       </div>
@@ -321,6 +324,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
                             <div key={i} className="mini-leave-item">
                               <div className="mini-avatar" style={{ background: getAvatarColor(l.Name) }}>{l.Name.charAt(0)}</div>
                               <span className="mini-name">{l.Name}</span>
+                              {l.Team && <span className="team-tag">{l.Team}</span>}
                               <span className={`mini-status ${getStatusClass(l.Status)}`}>{l.Status}</span>
                             </div>
                           ))}
