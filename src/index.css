@@ -524,7 +524,8 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
-  align-items: stretch;
+  align-items: start;
+  /* Let panels size naturally */
 }
 
 .panel {
@@ -556,10 +557,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  flex: 1;
-  /* Fill remaining panel space */
-  min-height: 0;
-  /* Allow scrolling */
+  max-height: 500px;
+  /* Explicit height for scrolling */
   overflow-y: auto;
 }
 
@@ -2004,10 +2003,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  flex: 1;
-  min-height: 0;
-  max-height: 400px;
-  /* Limit height to enable scrolling */
+  max-height: 350px;
+  /* Explicit height for scrolling */
   overflow-y: auto;
   padding-right: 0.5rem;
 }
