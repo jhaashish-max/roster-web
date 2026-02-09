@@ -524,13 +524,18 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
+  align-items: stretch;
 }
 
 .panel {
+  display: flex;
+  flex-direction: column;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 1.5rem;
+  height: 100%;
+  /* Ensure it fills grid cell */
 }
 
 .panel-header {
@@ -551,7 +556,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-height: 300px;
+  flex: 1;
+  /* Fill remaining panel space */
+  min-height: 0;
+  /* Allow scrolling */
   overflow-y: auto;
 }
 
@@ -595,6 +603,10 @@ body {
 
 .shift-morning {
   color: var(--morning);
+}
+
+.shift-list {
+  max-height: 600px;
 }
 
 .shift-afternoon {
@@ -1979,4 +1991,89 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 3px;
   margin-right: 0.25rem;
+}
+
+/* Upcoming Leaves Layout */
+.right-column-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.upcoming-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  flex: 1;
+  min-height: 0;
+  max-height: 400px;
+  /* Limit height to enable scrolling */
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.date-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.date-header {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-left: 0.25rem;
+}
+
+.date-leaves {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.mini-leave-item {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  background: var(--bg-hover);
+  /* Slightly distinct from card bg */
+  padding: 0.625rem 0.875rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s;
+}
+
+.mini-leave-item:hover {
+  border-color: var(--accent-primary);
+  transform: translateX(2px);
+}
+
+.mini-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mini-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.mini-status {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
 }

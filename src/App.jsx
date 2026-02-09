@@ -23,13 +23,14 @@ import {
   Save,
   Maximize2,
   Minimize2,
-  PieChart
+  PieChart,
+  CalendarDays
 } from 'lucide-react';
 import CellEditor from './components/CellEditor';
 import Summary from './components/Summary';
 import CommandPalette from './components/CommandPalette';
 import { Sun, Moon } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend, isAfter, isBefore, parseISO, startOfDay, isSameDay } from 'date-fns';
 import { supabase, fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam } from './lib/supabase';
 
 // N8n Webhook URL - Using Vite proxy to bypass CORS in Dev, Direct URL in Prod
@@ -147,6 +148,19 @@ const TeamSelector = ({ teams, selectedTeam, viewMode, setViewMode, setSelectedT
 );
 
 // 1. DASHBOARD
+// Helper for status classes
+const getStatusClass = (status) => {
+  if (!status || status === '-') return 'cell-empty';
+  if (status.includes('09:00')) return 'cell-morning';
+  if (status.includes('10:00') || status.includes('11:00')) return 'cell-afternoon';
+  if (status.includes('18:00')) return 'cell-night';
+  if (status === 'PL' || status === 'SL') return 'cell-leave';
+  if (status === 'WO') return 'cell-wo';
+  if (status === 'WFH') return 'cell-wfh';
+  if (status === 'WL') return 'cell-wl';
+  return 'cell-other';
+};
+
 const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerAction }) => {
   const todayStr = format(currentDate, 'yyyy-MM-dd');
   const todayData = rosterData.filter(d => d.Date === todayStr);
@@ -167,6 +181,29 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
 
   const onLeave = todayData.filter(d => ['PL', 'SL', 'WO', 'WFH'].includes(d.Status));
   const workingAgents = todayData.filter(d => d.Status.includes(':'));
+
+  const upcomingLeaves = useMemo(() => {
+    const today = startOfDay(new Date());
+    const viewMonthEnd = endOfMonth(currentDate);
+
+    return rosterData.filter(d => {
+      const dDate = parseISO(d.Date);
+      if (isBefore(dDate, today) || isSameDay(dDate, today)) return false;
+      if (isAfter(dDate, viewMonthEnd)) return false;
+
+      if (d.Status.includes(':')) return false;
+      if (d.Status === 'WO' && isWeekend(dDate)) return false;
+      return true;
+    }).sort((a, b) => a.Date.localeCompare(b.Date));
+  }, [rosterData, currentDate]);
+
+  const groupedLeaves = useMemo(() => {
+    return upcomingLeaves.reduce((acc, curr) => {
+      if (!acc[curr.Date]) acc[curr.Date] = [];
+      acc[curr.Date].push(curr);
+      return acc;
+    }, {});
+  }, [upcomingLeaves]);
 
   return (
     <div className="dashboard-container">
@@ -248,29 +285,51 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
               </div>
             </div>
 
-            <div className="panel">
-              <div className="panel-header">
-                <UserX size={18} />
-                <h3>Not Available ({onLeave.length})</h3>
-              </div>
-              {onLeave.length > 0 ? (
-                <div className="leave-list">
-                  {onLeave.map((p, i) => (
-                    <div key={i} className="leave-item">
-                      <div className="agent-avatar" style={{ background: getAvatarColor(p.Name) }}>{p.Name.charAt(0)}</div>
-                      <div className="agent-info">
-                        <div className="agent-name-row">
-                          <div className="agent-name">{p.Name}</div>
-                          {p.Team && <span className="team-tag">{p.Team}</span>}
-                        </div>
-                        <div className="leave-type">{p.Status}</div>
-                      </div>
-                    </div>
-                  ))}
+            <div className="right-column-stack">
+              <div className="panel">
+                <div className="panel-header">
+                  <UserX size={18} />
+                  <h3>Not Available ({onLeave.length})</h3>
                 </div>
-              ) : (
-                <p className="empty-state">Everyone is available today! 🎉</p>
-              )}
+                {onLeave.length > 0 ? (
+                  <div className="leave-list">
+                    {onLeave.map((p, i) => (
+                      <div key={i} className="leave-item">
+                        <div className="agent-avatar" style={{ background: getAvatarColor(p.Name) }}>{p.Name.charAt(0)}</div>
+                        <div className="agent-info">
+                          <div className="agent-name">{p.Name}</div>
+                          <div className={`shift-time ${getShiftClass(p.Status)}`}>{p.Status}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="empty-state">Everyone is available today.</p>}
+              </div>
+
+              <div className="panel" style={{ flex: 1 }}>
+                <div className="panel-header">
+                  <CalendarDays size={18} />
+                  <h3>Upcoming Leaves</h3>
+                </div>
+                {upcomingLeaves.length > 0 ? (
+                  <div className="upcoming-list">
+                    {Object.entries(groupedLeaves).map(([date, leaves]) => (
+                      <div key={date} className="date-group">
+                        <div className="date-header">{format(parseISO(date), 'EEE, MMM d')}</div>
+                        <div className="date-leaves">
+                          {leaves.map((l, i) => (
+                            <div key={i} className="mini-leave-item">
+                              <div className="mini-avatar" style={{ background: getAvatarColor(l.Name) }}>{l.Name.charAt(0)}</div>
+                              <span className="mini-name">{l.Name}</span>
+                              <span className={`mini-status ${getStatusClass(l.Status)}`}>{l.Status}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="empty-state">No upcoming leaves this month.</p>}
+              </div>
             </div>
           </div>
         </>
@@ -304,20 +363,10 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
     return map;
   }, [rosterData]);
 
-  // Selection state: { type: 'cell' | 'row' | 'column', row: string, col: string }
+  // Selection state: {type: 'cell' | 'row' | 'column', row: string, col: string }
   const [selection, setSelection] = useState(null);
 
-  const getStatusClass = (status) => {
-    if (!status || status === '-') return 'cell-empty';
-    if (status.includes('09:00')) return 'cell-morning';
-    if (status.includes('10:00') || status.includes('11:00')) return 'cell-afternoon';
-    if (status.includes('18:00')) return 'cell-night';
-    if (status === 'PL' || status === 'SL') return 'cell-leave';
-    if (status === 'WO') return 'cell-wo';
-    if (status === 'WFH') return 'cell-wfh';
-    if (status === 'WL') return 'cell-wl';
-    return 'cell-other';
-  };
+
 
   const handleCellBlur = async (agent, dateStr, newValue) => {
     if (onCellUpdate) {
