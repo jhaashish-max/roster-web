@@ -1144,9 +1144,9 @@ function App() {
 
   // Handle cell update (admin mode)
   const handleCellUpdate = async (date, name, status) => {
-    if (!isAdmin) return;
+    if (!isAdmin || !selectedTeam) return;
     try {
-      await updateRosterEntry(date, name, status);
+      await updateRosterEntry(date, name, status, selectedTeam);
       // Update local state
       setRosterData(prev => prev.map(row =>
         row.Date === date && row.Name === name ? { ...row, Status: status } : row
