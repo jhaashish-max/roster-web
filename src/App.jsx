@@ -1088,7 +1088,7 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
                       </button>
                     </div>
                     <p className="form-hint">
-                      Use variables: {'{{TEAM_NAME}}'}, {'{{MONTH_NAME}}'}, {'{{YEAR}}'}, {'{{TEAM_MEMBERS}}'}, {'{{SLACK_REQUESTS}}'}, {'{{START_DATE}}'}, {'{{END_DATE}}'}, {'{{MONTH_PADDED}}'}, {'{{PREVIOUS_WEEKEND_DATA}}'}
+                      Use variables: {'{{TEAM_NAME}}'}, {'{{MONTH_NAME}}'}, {'{{YEAR}}'}, {'{{TEAM_MEMBERS}}'}, {'{{SLACK_REQUESTS}}'}, {'{{START_DATE}}'}, {'{{END_DATE}}'}, {'{{MONTH_PADDED}}'}, {'{{PREVIOUS_MONTH_DATA}}'}
                     </p>
                     <textarea
                       rows={isPromptFullscreen ? 30 : 10}
