@@ -9,10 +9,12 @@ const CellEditor = ({ value, onChange, onFinish }) => {
     const OPTIONS = [
         { value: 'PL', label: 'PL (Planned Leave)' },
         { value: 'WO', label: 'WO (Week Off)' },
-        { value: '10:00 - 19:00', label: '10:00 - 19:00' },
-        { value: '18:00 - 03:00', label: '18:00 - 03:00' },
+        { value: '07:00 - 16:00', label: '07:00 - 16:00' },
         { value: '09:00 - 18:00', label: '09:00 - 18:00' },
+        { value: '10:00 - 19:00', label: '10:00 - 19:00' },
         { value: '11:00 - 20:00', label: '11:00 - 20:00' },
+        { value: '12:00 - 21:00', label: '12:00 - 21:00' },
+        { value: '18:00 - 03:00', label: '18:00 - 03:00' },
         { value: 'WFH', label: 'WFH' },
         { value: 'WL', label: 'WL (Wellness)' },
         { value: 'OH', label: 'OH (Optional Holiday)' }

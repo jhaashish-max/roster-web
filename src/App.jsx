@@ -29,16 +29,18 @@ import {
 import CellEditor from './components/CellEditor';
 import Summary from './components/Summary';
 import CommandPalette from './components/CommandPalette';
-import { Sun, Moon } from 'lucide-react';
+import LoginPage from './components/LoginPage';
+import Logo from './components/Logo';
+import { Sun, Moon, LogOut } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend, isAfter, isBefore, parseISO, startOfDay, isSameDay } from 'date-fns';
-import { supabase, fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam } from './lib/supabase';
+import { fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam, isLoggedIn, getUserEmail, logout as authLogout, handleAuthCallback, checkAdmin, listAdmins, addAdmin, removeAdmin, whoAmI, createLeaveRequest, getMyRequests, getPendingRequests, reviewRequest, bulkUpdateRosterEntries } from './lib/api';
+import { FileText, CheckSquare } from 'lucide-react';
 
 // N8n Webhook URL - Using Vite proxy to bypass CORS in Dev, Direct URL in Prod
 const IS_DEV = import.meta.env.DEV;
 const BASE_URL = IS_DEV ? '/api/n8n' : 'https://n8n-conc.razorpay.com';
 
 const N8N_WEBHOOK_URL = `${BASE_URL}/webhook/8211a001-8f9e-4387-9289-1538db922fa9`;
-const N8N_AUTH_WEBHOOK_URL = `${BASE_URL}/webhook/cd0f5c69-c0fc-4272-a662-7a0e33698c7b`;
 
 // Default prompt template for roster generation
 const DEFAULT_PROMPT = `You are a Roster Manager. Generate a JSON schedule for the '{{TEAM_NAME}}' team for {{MONTH_NAME}} {{YEAR}}.
@@ -149,15 +151,36 @@ const TeamSelector = ({ teams, selectedTeam, viewMode, setViewMode, setSelectedT
 
 // 1. DASHBOARD
 // Helper for status classes
-const getStatusClass = (status) => {
+// Helper for status classes
+const getStatusClass = (status, dateObj) => {
   if (!status || status === '-') return 'cell-empty';
-  if (status.includes('09:00')) return 'cell-morning';
-  if (status.includes('10:00') || status.includes('11:00')) return 'cell-afternoon';
-  if (status.includes('18:00')) return 'cell-night';
-  if (status === 'PL' || status === 'SL') return 'cell-leave';
-  if (status === 'WO') return 'cell-wo';
-  if (status === 'WFH') return 'cell-wfh';
-  if (status === 'WL') return 'cell-wl';
+  const s = status.toUpperCase();
+
+  if (s === 'WO') return 'cell-wo';
+  if (s === 'PL' || s === 'SL') return 'cell-leave';
+  if (s === 'WL') return 'cell-wl';
+
+  // Morning shift (07:00 or 09:00)
+  if (s.includes('07:00') || s.includes('09:00') || s.includes('9:00') || s.includes('9 - 6')) {
+    if (s.includes('07:00') && dateObj && isWeekend(dateObj)) {
+      return 'cell-oncall';
+    }
+    return 'cell-morning';
+  }
+
+  // On-call / 10:00-22:00
+  if (s.includes('10:00 - 22:00') || s.includes('ON CALL') || s.includes('ONCALL')) return 'cell-oncall';
+
+  // Night shift
+  if (s.includes('NIGHT') || s.startsWith('18:') || s.startsWith('19:') || s.startsWith('20:')) return 'cell-night';
+
+  // Late shift / Afternoon (11:00 - 20:00 or 12:00 - 21:00)
+  if (s.includes('11:00') || s.includes('11-8') || s.includes('11 - 8') || s.includes('12:00')) return 'cell-afternoon';
+
+  // Holiday
+  if (s.includes('HOLIDAY') || s === 'HL') return 'cell-holiday';
+
+  if (s === 'WFH') return 'cell-wfh';
   return 'cell-other';
 };
 
@@ -170,8 +193,8 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
     return {
       total: todayData.length,
       working: working.length,
-      morning: todayData.filter(d => d.Status === '09:00 - 18:00').length,
-      afternoon: todayData.filter(d => d.Status === '11:00 - 20:00' || d.Status === '10:00 - 19:00' || d.Status === '06:00 - 15:00').length,
+      morning: todayData.filter(d => d.Status === '09:00 - 18:00' || d.Status === '07:00 - 16:00').length,
+      afternoon: todayData.filter(d => d.Status === '11:00 - 20:00' || d.Status === '10:00 - 19:00' || d.Status === '06:00 - 15:00' || d.Status === '12:00 - 21:00').length,
       night: todayData.filter(d => d.Status === '18:00 - 03:00').length,
       leave: todayData.filter(d => d.Status === 'PL' || d.Status === 'SL' || d.Status === 'WFH').length,
       wo: todayData.filter(d => d.Status === 'WO').length,
@@ -343,34 +366,71 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
 };
 
 const getShiftClass = (status) => {
-  if (status.includes('09:00')) return 'shift-morning';
-  if (status.includes('10:00') || status.includes('11:00')) return 'shift-afternoon';
+  if (status.includes('07:00') || status.includes('09:00')) return 'shift-morning';
+  if (status.includes('10:00') || status.includes('11:00') || status.includes('12:00')) return 'shift-afternoon';
   if (status.includes('18:00')) return 'shift-night';
   return '';
 };
 
 // 2. ROSTER TABLE
-const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, onCellUpdate, headerAction }) => {
+const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, onCellUpdate, headerAction, viewMode, allTeamsData }) => {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
   const startDate = new Date(year, month - 1, 1);
   const endDate = endOfMonth(startDate);
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
-  const agents = [...new Set(rosterData.map(d => d.Name))];
-  const rosterMap = useMemo(() => {
-    const map = {};
-    rosterData.forEach(d => {
-      if (!map[d.Name]) map[d.Name] = {};
-      map[d.Name][d.Date] = d.Status;
+  // Zoom state persisted in localStorage
+  const [zoom, setZoom] = useState(() => {
+    const saved = localStorage.getItem('roster_zoom');
+    return saved ? parseFloat(saved) : 1;
+  });
+
+  const handleZoom = (delta) => {
+    setZoom(prev => {
+      const next = Math.max(0.4, Math.min(1.2, +(prev + delta).toFixed(2)));
+      localStorage.setItem('roster_zoom', next);
+      return next;
     });
-    return map;
-  }, [rosterData]);
+  };
 
-  // Selection state: {type: 'cell' | 'row' | 'column', row: string, col: string }
+  // Determine which data to render
+  const displayData = viewMode === 'all' && allTeamsData ? allTeamsData : rosterData;
+
+  // Group data by team for "all" mode, or use flat list for single
+  const teamGroups = useMemo(() => {
+    if (viewMode !== 'all') {
+      const agents = [...new Set(displayData.map(d => d.Name))];
+      const map = {};
+      displayData.forEach(d => {
+        if (!map[d.Name]) map[d.Name] = {};
+        map[d.Name][d.Date] = d.Status;
+      });
+      return [{ team: null, agents, map }];
+    }
+
+    // Group by Team field
+    const teamMap = {};
+    displayData.forEach(d => {
+      const team = d.Team || 'Unknown';
+      if (!teamMap[team]) teamMap[team] = [];
+      teamMap[team].push(d);
+    });
+
+    return Object.keys(teamMap).sort().map(team => {
+      const items = teamMap[team];
+      const agents = [...new Set(items.map(d => d.Name))];
+      const map = {};
+      items.forEach(d => {
+        if (!map[d.Name]) map[d.Name] = {};
+        map[d.Name][d.Date] = d.Status;
+      });
+      return { team, agents, map };
+    });
+  }, [displayData, viewMode]);
+
+  // Selection state
   const [selection, setSelection] = useState(null);
-
-
 
   const handleCellBlur = async (agent, dateStr, newValue) => {
     if (onCellUpdate) {
@@ -378,7 +438,6 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
     }
   };
 
-  // Selection handlers
   const handleCellClick = (agent, dateStr, e) => {
     e.stopPropagation();
     setSelection({ type: 'cell', row: agent, col: dateStr });
@@ -394,31 +453,18 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
     setSelection({ type: 'column', row: null, col: dateStr });
   };
 
-  const clearSelection = () => {
-    setSelection(null);
-  };
+  const clearSelection = () => setSelection(null);
 
   const isCellSelected = (agent, dateStr) => {
     if (!selection) return false;
-    if (selection.type === 'cell') {
-      return selection.row === agent && selection.col === dateStr;
-    }
-    if (selection.type === 'row') {
-      return selection.row === agent;
-    }
-    if (selection.type === 'column') {
-      return selection.col === dateStr;
-    }
+    if (selection.type === 'cell') return selection.row === agent && selection.col === dateStr;
+    if (selection.type === 'row') return selection.row === agent;
+    if (selection.type === 'column') return selection.col === dateStr;
     return false;
   };
 
-  const isRowSelected = (agent) => {
-    return selection?.type === 'row' && selection.row === agent;
-  };
-
-  const isColumnSelected = (dateStr) => {
-    return selection?.type === 'column' && selection.col === dateStr;
-  };
+  const isRowSelected = (agent) => selection?.type === 'row' && selection.row === agent;
+  const isColumnSelected = (dateStr) => selection?.type === 'column' && selection.col === dateStr;
 
   return (
     <div className="roster-page">
@@ -427,27 +473,36 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
           <h1 className="dashboard-title">Monthly Roster</h1>
           {headerAction}
         </div>
-        <div className="date-nav">
-          <button className="date-nav-btn" onClick={() => onChangeDate(subMonths(currentDate, 1))}>
-            <ChevronLeft size={20} />
-          </button>
-          <div className="date-display">
-            <Calendar size={18} />
-            {format(currentDate, 'MMMM yyyy')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div className="zoom-controls">
+            <button className="zoom-btn" onClick={() => handleZoom(-0.1)} title="Zoom out">−</button>
+            <span className="zoom-level">{Math.round(zoom * 100)}%</span>
+            <button className="zoom-btn" onClick={() => handleZoom(0.1)} title="Zoom in">+</button>
           </div>
-          <button className="date-nav-btn" onClick={() => onChangeDate(addMonths(currentDate, 1))}>
-            <ChevronRight size={20} />
-          </button>
+          <div className="date-nav">
+            <button className="date-nav-btn" onClick={() => onChangeDate(subMonths(currentDate, 1))}>
+              <ChevronLeft size={20} />
+            </button>
+            <div className="date-display">
+              <Calendar size={18} />
+              {format(currentDate, 'MMMM yyyy')}
+            </div>
+            <button className="date-nav-btn" onClick={() => onChangeDate(addMonths(currentDate, 1))}>
+              <ChevronRight size={20} />
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="legend-chips">
         <span className="legend-chip chip-morning">Morning</span>
         <span className="legend-chip chip-afternoon">Afternoon</span>
+        <span className="legend-chip chip-oncall">On Call</span>
         <span className="legend-chip chip-night">Night</span>
-        <span className="legend-chip chip-leave">Leave</span>
+        <span className="legend-chip chip-leave">PL</span>
         <span className="legend-chip chip-wo">WO</span>
         <span className="legend-chip chip-wl">WL</span>
+        <span className="legend-chip chip-holiday">Holiday</span>
         <span className="legend-chip chip-wfh">WFH</span>
       </div>
 
@@ -456,70 +511,81 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
           <Loader2 size={32} className="spin" />
           <p>Loading roster data...</p>
         </div>
-      ) : rosterData.length === 0 ? (
+      ) : displayData.length === 0 ? (
         <div className="empty-state-large">
           <Calendar size={48} />
           <h3>No Roster Found</h3>
           <p>Generate a new roster for {format(currentDate, 'MMMM yyyy')}</p>
         </div>
       ) : (
-        <div className="roster-table-wrapper" onClick={clearSelection}>
-          <table className="roster-table">
-            <thead>
-              <tr>
-                <th className="sticky-col corner-cell">Agent</th>
-                {days.map(day => {
-                  const dateStr = format(day, 'yyyy-MM-dd');
-                  const todayStr = format(new Date(), 'yyyy-MM-dd');
-                  const isToday = dateStr === todayStr;
-                  return (
-                    <th
-                      key={day.toString()}
-                      className={`${isWeekend(day) ? 'weekend-header' : ''} ${isColumnSelected(dateStr) ? 'selected-header' : ''} ${isToday ? 'today-col' : ''}`}
-                      onClick={(e) => handleColumnClick(dateStr, e)}
-                    >
-                      <div className="day-num">{format(day, 'd')}</div>
-                      <div className="day-name">{format(day, 'EEE')}</div>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {agents.map(agent => (
-                <tr key={agent} className={isRowSelected(agent) ? 'selected-row' : ''}>
-                  <td
-                    className={`sticky-col agent-cell ${isRowSelected(agent) ? 'selected-header' : ''}`}
-                    onClick={(e) => handleRowClick(agent, e)}
-                  >
-                    {agent}
-                  </td>
-                  {days.map(day => {
-                    const dateStr = format(day, 'yyyy-MM-dd');
-                    const status = rosterMap[agent]?.[dateStr] || '-';
-                    const cellClass = getStatusClass(status);
-                    const isSelected = isCellSelected(agent, dateStr);
-                    return (
-                      <td
-                        key={dateStr}
-                        className={`roster-cell ${cellClass} ${isWeekend(day) ? 'weekend-cell' : ''} ${isSelected ? 'selected-cell' : ''}`}
-                        onClick={(e) => handleCellClick(agent, dateStr, e)}
-                      >
-                        {isAdmin ? (
-                          <CellEditor
-                            value={status}
-                            onFinish={(newVal) => handleCellBlur(agent, dateStr, newVal)}
-                          />
-                        ) : (
-                          <span className="cell-text">{status}</span>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="roster-all-groups" onClick={clearSelection} style={{ zoom: zoom }}>
+          {teamGroups.map((group) => (
+            <div key={group.team || 'single'} className="roster-team-section">
+              {group.team && (
+                <div className="team-section-header">
+                  {group.team}
+                </div>
+              )}
+              <div className="roster-table-wrapper">
+                <table className="roster-table">
+                  <thead>
+                    <tr>
+                      <th className="sticky-col corner-cell">Agent</th>
+                      {days.map(day => {
+                        const dateStr = format(day, 'yyyy-MM-dd');
+                        const todayStr = format(new Date(), 'yyyy-MM-dd');
+                        const isToday = dateStr === todayStr;
+                        return (
+                          <th
+                            key={day.toString()}
+                            className={`${isWeekend(day) ? 'weekend-header' : ''} ${isColumnSelected(dateStr) ? 'selected-header' : ''} ${isToday ? 'today-col' : ''}`}
+                            onClick={(e) => handleColumnClick(dateStr, e)}
+                          >
+                            <div className="day-num">{format(day, 'd')}</div>
+                            <div className="day-name">{format(day, 'EEE')}</div>
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.agents.map(agent => (
+                      <tr key={`${group.team}-${agent}`} className={isRowSelected(agent) ? 'selected-row' : ''}>
+                        <td
+                          className={`sticky-col agent-cell ${isRowSelected(agent) ? 'selected-header' : ''}`}
+                          onClick={(e) => handleRowClick(agent, e)}
+                        >
+                          {agent}
+                        </td>
+                        {days.map(day => {
+                          const dateStr = format(day, 'yyyy-MM-dd');
+                          const status = group.map[agent]?.[dateStr] || '-';
+                          const cellClass = getStatusClass(status, day);
+                          const isSelected = isCellSelected(agent, dateStr);
+                          return (
+                            <td
+                              key={dateStr}
+                              className={`roster-cell ${cellClass} ${isWeekend(day) ? 'weekend-cell' : ''} ${isSelected ? 'selected-cell' : ''}`}
+                              onClick={(e) => handleCellClick(agent, dateStr, e)}
+                            >
+                              {isAdmin ? (
+                                <CellEditor
+                                  value={status}
+                                  onFinish={(newVal) => handleCellBlur(agent, dateStr, newVal)}
+                                />
+                              ) : (
+                                <span className="cell-text">{status}</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -704,41 +770,129 @@ const DeleteConfirm = ({ onClose, onConfirm, currentDate, deleting, teams = [], 
   );
 };
 
-// Admin Login Modal
-const AdminLoginModal = ({ onClose, onLogin, loggingIn }) => {
-  const [password, setPassword] = useState('');
+// Admin Manager Modal
+const AdminManager = ({ onClose }) => {
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newEmail, setNewEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    loadAdmins();
+  }, []);
+
+  const loadAdmins = async () => {
+    setLoading(true);
+    try {
+      const data = await listAdmins();
+      setAdmins(data);
+    } catch (err) {
+      setError('Failed to load admins');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdd = async (e) => {
     e.preventDefault();
-    onLogin(password);
+    if (!newEmail.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      await addAdmin(newEmail.trim());
+      setNewEmail('');
+      await loadAdmins();
+    } catch (err) {
+      setError(err.message || 'Failed to add admin');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async (email) => {
+    if (!confirm(`Remove ${email} as admin?`)) return;
+    try {
+      await removeAdmin(email);
+      await loadAdmins();
+    } catch (err) {
+      setError(err.message || 'Failed to remove admin');
+    }
   };
 
   return (
     <div className="modal-overlay">
       <div className="modal-content modal-small">
         <div className="modal-header">
-          <Settings size={24} className="modal-icon" />
-          <h2>Admin Access</h2>
+          <Users size={24} className="modal-icon" />
+          <h2>Manage Admins</h2>
         </div>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Enter Admin Password</label>
+
+        {error && (
+          <div style={{ color: 'var(--accent-danger)', fontSize: '0.85rem', padding: '0 1.5rem', marginBottom: '0.5rem' }}>
+            <AlertCircle size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+            {error}
+          </div>
+        )}
+
+        <div style={{ padding: '0 1.5rem 1rem' }}>
+          <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
             <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              autoFocus
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder="email@razorpay.com"
               className="form-input"
+              style={{ flex: 1 }}
+              disabled={saving}
             />
-          </div>
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loggingIn}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={loggingIn || !password}>
-              {loggingIn ? <Loader2 size={16} className="spin" /> : 'Unlock'}
+            <button type="submit" className="btn btn-primary" disabled={saving || !newEmail.trim()}>
+              {saving ? <Loader2 size={16} className="spin" /> : <Plus size={16} />}
+              Add
             </button>
-          </div>
-        </form>
+          </form>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '1rem' }}>
+              <Loader2 size={20} className="spin" />
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {admins.map((admin) => (
+                <div key={admin.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.6rem 0.75rem',
+                  borderRadius: '8px',
+                  background: 'var(--bg-hover)',
+                  fontSize: '0.85rem'
+                }}>
+                  <div>
+                    <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{admin.email}</span>
+                    {admin.added_by && (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>
+                        added by {admin.added_by}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    className="btn btn-icon"
+                    onClick={() => handleRemove(admin.email)}
+                    title="Remove admin"
+                    style={{ padding: '0.25rem', background: 'transparent', color: 'var(--accent-danger)' }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
+        </div>
       </div>
     </div>
   );
@@ -969,16 +1123,315 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
 
 // --- MAIN APP ---
 function App() {
+  // Auth State
+  const [authenticated, setAuthenticated] = useState(isLoggedIn());
+
+  // Check for OAuth redirect hash on load
+  useEffect(() => {
+    const session = handleAuthCallback();
+    if (session) {
+      setAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = () => {
+    setAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    authLogout();
+    setAuthenticated(false);
+  };
+
+  // Show login page if not authenticated
+  if (!authenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  return <AuthenticatedApp onLogout={handleLogout} />;
+}
+
+// ─── REQUESTS PAGE ───────────────────────────────────────────────
+const RequestsPage = ({ userProfile }) => {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [requestType, setRequestType] = useState('PL');
+  const [datesList, setDatesList] = useState([]); // array of date strings
+  const [dateInput, setDateInput] = useState(''); // current calendar value
+  const [reason, setReason] = useState('');
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => { loadRequests(); }, []);
+
+  const loadRequests = async () => {
+    setLoading(true);
+    try {
+      const data = await getMyRequests();
+      setRequests(data);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  };
+
+  const addDate = () => {
+    if (dateInput && !datesList.includes(dateInput)) {
+      setDatesList(prev => [...prev, dateInput].sort());
+      setDateInput('');
+    }
+  };
+
+  const removeDate = (d) => {
+    setDatesList(prev => prev.filter(x => x !== d));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (datesList.length === 0) return;
+    setSubmitting(true);
+    try {
+      await createLeaveRequest({ request_type: requestType, dates: datesList, reason });
+      setToast({ message: 'Request submitted successfully!', type: 'success' });
+      setDatesList([]);
+      setReason('');
+      await loadRequests();
+    } catch (err) {
+      setToast({ message: err.message || 'Failed to submit request', type: 'error' });
+    } finally { setSubmitting(false); }
+  };
+
+  const getStatusBadge = (status) => {
+    const colors = { pending: '#eab308', approved: '#22c55e', declined: '#ef4444' };
+    return (
+      <span style={{
+        padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600,
+        background: `${colors[status]}20`, color: colors[status], textTransform: 'uppercase'
+      }}>{status}</span>
+    );
+  };
+
+  return (
+    <div className="view-container">
+      <div className="view-header">
+        <h2><FileText size={20} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Raise a Request</h2>
+      </div>
+
+      {toast && (
+        <div className={`toast toast-${toast.type}`} style={{ margin: '0 0 1rem' }}>
+          {toast.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+          {toast.message}
+          <button onClick={() => setToast(null)}><X size={12} /></button>
+        </div>
+      )}
+
+      {!userProfile?.name ? (
+        <div style={{ background: 'var(--bg-card)', borderRadius: '12px', padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <AlertCircle size={24} style={{ marginBottom: '0.5rem' }} />
+          <p>Your email is not mapped to a team member yet. Contact your admin to map your email.</p>
+        </div>
+      ) : (
+        <>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', border: '1px solid var(--border-color)' }}>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', display: 'block', color: 'var(--text-secondary)' }}>Request Type</label>
+                <select value={requestType} onChange={(e) => setRequestType(e.target.value)} className="form-input" style={{ padding: '0.6rem', maxWidth: '300px' }}>
+                  <option value="PL">PL — Planned Leave</option>
+                  <option value="WL">WL — Wellness Leave</option>
+                  <option value="WFH">WFH — Work From Home</option>
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', display: 'block', color: 'var(--text-secondary)' }}>Select Dates</label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <input
+                    type="date"
+                    value={dateInput}
+                    onChange={(e) => setDateInput(e.target.value)}
+                    className="form-input"
+                    style={{ maxWidth: '200px' }}
+                  />
+                  <button type="button" className="btn btn-secondary" onClick={addDate} disabled={!dateInput} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+                    <Plus size={14} /> Add Date
+                  </button>
+                </div>
+                {datesList.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {datesList.map(d => (
+                      <span key={d} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                        padding: '0.25rem 0.6rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 500,
+                        background: 'rgba(0, 115, 255, 0.12)', color: 'var(--accent-primary)', border: '1px solid rgba(0, 115, 255, 0.25)'
+                      }}>
+                        <CalendarDays size={12} />
+                        {d}
+                        <button type="button" onClick={() => removeDate(d)} style={{
+                          background: 'none', border: 'none', cursor: 'pointer', padding: '0', lineHeight: 1,
+                          color: 'var(--accent-danger)', marginLeft: '2px'
+                        }}>
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {datesList.length === 0 && (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Pick dates from the calendar above</div>
+                )}
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', display: 'block', color: 'var(--text-secondary)' }}>Reason <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+                <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Family function, doctor appointment, etc." className="form-input" />
+              </div>
+              <button type="submit" className="btn btn-primary" disabled={submitting || datesList.length === 0} style={{ minWidth: '140px' }}>
+                {submitting ? <><Loader2 size={16} className="spin" /> Submitting...</> : <><Plus size={16} /> Submit Request</>}
+              </button>
+            </form>
+          </div>
+
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>My Requests</h3>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}><Loader2 size={20} className="spin" /></div>
+          ) : requests.length === 0 ? (
+            <div style={{ background: 'var(--bg-card)', borderRadius: '12px', padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No requests yet</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {requests.map(r => (
+                <div key={r.id} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0.75rem 1rem', borderRadius: '10px',
+                  background: 'var(--bg-card)', border: '1px solid var(--border-color)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--accent-primary)', minWidth: '40px' }}>{r.request_type}</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{r.dates.join(', ')}</span>
+                    {r.reason && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>— {r.reason}</span>}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {getStatusBadge(r.status)}
+                    {r.reviewed_by && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>by {r.reviewed_by}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+// ─── REVIEW REQUESTS PAGE (Admin) ────────────────────────────────
+const ReviewRequestsPage = ({ onRefreshRoster }) => {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => { loadPending(); }, []);
+
+  const loadPending = async () => {
+    setLoading(true);
+    try {
+      const data = await getPendingRequests();
+      setRequests(data);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  };
+
+  const handleReview = async (id, decision) => {
+    setProcessing(id);
+    try {
+      await reviewRequest(id, decision);
+      setToast({ message: `Request ${decision}!`, type: 'success' });
+      await loadPending();
+      if (decision === 'approved' && onRefreshRoster) onRefreshRoster();
+    } catch (err) {
+      setToast({ message: err.message || 'Failed to review', type: 'error' });
+    } finally { setProcessing(null); }
+  };
+
+  return (
+    <div className="view-container">
+      <div className="view-header">
+        <h2><CheckSquare size={20} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Review Requests</h2>
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{requests.length} pending</span>
+      </div>
+
+      {toast && (
+        <div className={`toast toast-${toast.type}`} style={{ margin: '0 0 1rem' }}>
+          {toast.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+          {toast.message}
+          <button onClick={() => setToast(null)}><X size={12} /></button>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}><Loader2 size={20} className="spin" /></div>
+      ) : requests.length === 0 ? (
+        <div style={{ background: 'var(--bg-card)', borderRadius: '12px', padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <CheckCircle size={32} style={{ marginBottom: '0.75rem', opacity: 0.5 }} />
+          <p>All caught up! No pending requests.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {requests.map(r => (
+            <div key={r.id} style={{
+              padding: '1rem 1.25rem', borderRadius: '12px',
+              background: 'var(--bg-card)', border: '1px solid var(--border-color)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                <div>
+                  <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{r.requester_name}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{r.team}</span>
+                </div>
+                <span style={{
+                  padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700,
+                  background: 'rgba(0, 115, 255, 0.15)', color: 'var(--accent-primary)'
+                }}>{r.request_type}</span>
+              </div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                <CalendarDays size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                {r.dates.join(', ')}
+              </div>
+              {r.reason && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontStyle: 'italic' }}>"{r.reason}"</div>}
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => handleReview(r.id, 'approved')}
+                  disabled={processing === r.id}
+                  style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}
+                >
+                  {processing === r.id ? <Loader2 size={14} className="spin" /> : <><CheckCircle size={14} /> Approve</>}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => handleReview(r.id, 'declined')}
+                  disabled={processing === r.id}
+                  style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', color: 'var(--accent-danger)' }}
+                >
+                  <X size={14} /> Decline
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+function AuthenticatedApp({ onLogout }) {
   const [view, setView] = useState('dashboard');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userIsAdminRole, setUserIsAdminRole] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
   const [showGenerator, setShowGenerator] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTeamSettings, setShowTeamSettings] = useState(false);
+  const [showAdminManager, setShowAdminManager] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
-
-  // Admin Auth State
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-  const [loggingIn, setLoggingIn] = useState(false);
 
   // Command Palette State
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -996,7 +1449,7 @@ function App() {
   }, []);
 
   // Theme State
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
     if (theme === 'light') {
@@ -1020,12 +1473,26 @@ function App() {
   // Teams state
   const [teams, setTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState('');
-  const [viewMode, setViewMode] = useState('single'); // 'single' or 'all'
+  const [viewMode, setViewMode] = useState('all'); // 'single' or 'all'
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === 'true');
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      localStorage.setItem('sidebar_collapsed', !prev);
+      return !prev;
+    });
+  };
   const [allTeamsData, setAllTeamsData] = useState([]);
 
-  // Load teams on mount
+  // Load teams on mount + check admin status + fetch user profile
   useEffect(() => {
     loadTeams();
+    checkAdmin().then(isAdminResult => {
+      setUserIsAdminRole(isAdminResult);
+    }).catch(() => setUserIsAdminRole(false));
+    whoAmI().then(profile => {
+      setUserProfile(profile);
+    }).catch(() => setUserProfile(null));
   }, []);
 
   const loadTeams = async () => {
@@ -1043,16 +1510,18 @@ function App() {
     const month = currentDate.getMonth() + 1;
 
     try {
-      // Always Fetch single team roster (for Roster View)
-      const data = await fetchRoster(year, month, selectedTeam || undefined);
-      setRosterData(data);
-      setRosterExists(data.length > 0);
-
-      // If 'all' mode, also fetch all teams data for dashboard
       if (viewMode === 'all') {
+        // In "all" mode, only fetch all teams data
         const allDataMap = await fetchAllTeamsRoster(year, month);
         const flatData = Object.values(allDataMap).flat();
         setAllTeamsData(flatData);
+        setRosterData(flatData);
+        setRosterExists(flatData.length > 0);
+      } else if (selectedTeam) {
+        // In "single" mode, fetch only selected team
+        const data = await fetchRoster(year, month, selectedTeam);
+        setRosterData(data);
+        setRosterExists(data.length > 0);
       }
     } catch (error) {
       console.error('Error loading roster:', error);
@@ -1066,30 +1535,13 @@ function App() {
     loadRoster();
   }, [loadRoster]);
 
-  // Handle Admin Login
-  const handleAdminLogin = async (password) => {
-    setLoggingIn(true);
-    try {
-      const response = await fetch(N8N_AUTH_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
+  // Toggle Admin Mode (only available if user has admin role)
+  const toggleAdminMode = () => {
+    if (userIsAdminRole) {
+      setIsAdmin(prev => {
+        if (!prev) setToast({ message: 'Admin Access Granted 🔓', type: 'success' });
+        return !prev;
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setIsAdmin(true);
-        setPasswordModalOpen(false);
-        setToast({ message: 'Admin Access Granted 🔓', type: 'success' });
-      } else {
-        setToast({ message: result.message || 'Invalid password', type: 'error' });
-      }
-    } catch (error) {
-      console.error('Auth error:', error);
-      setToast({ message: 'Authentication failed', type: 'error' });
-    } finally {
-      setLoggingIn(false);
     }
   };
 
@@ -1100,24 +1552,101 @@ function App() {
 
   // Handle generate
   const handleGenerate = async (payload) => {
-    setToast({ message: 'Generating roster...', type: 'loading' });
+    setToast({ message: 'Compiling prompt...', type: 'loading' });
 
     try {
-      const response = await fetch(N8N_WEBHOOK_URL, {
+      const { month, year, team_name, team_members, slack_thread, notes, custom_prompt } = payload;
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+
+      const monthNames = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const monthName = monthNames[month];
+
+      let promptText = custom_prompt || DEFAULT_PROMPT;
+      const combinedInput = `${slack_thread}\n\nMore notes:\n${notes}`;
+
+      promptText = promptText
+        .replace(/\{\{TEAM_NAME\}\}/g, team_name)
+        .replace(/\{\{MONTH_NAME\}\}/g, monthName)
+        .replace(/\{\{YEAR\}\}/g, year)
+        .replace(/\{\{TEAM_MEMBERS\}\}/g, JSON.stringify(team_members))
+        .replace(/\{\{SLACK_REQUESTS\}\}/g, combinedInput)
+        .replace(/\{\{START_DATE\}\}/g, format(startDate, 'yyyy-MM-dd'))
+        .replace(/\{\{END_DATE\}\}/g, format(endDate, 'yyyy-MM-dd'))
+        .replace(/\{\{MONTH_PADDED\}\}/g, String(month).padStart(2, '0'));
+
+      setToast({ message: 'Requesting AI generation...', type: 'loading' });
+
+      const sessionData = localStorage.getItem('roster_session');
+      const token = sessionData ? JSON.parse(sessionData).access_token : '';
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://roster-api-bay.vercel.app';
+
+      const response = await fetch(`${apiBase}/api/roster/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ prompt: promptText })
       });
 
-      if (response.ok) {
-        setToast({ message: 'Roster generated successfully!', type: 'success' });
-        await loadRoster();
-      } else {
-        throw new Error('Generation failed');
+      if (!response.ok) {
+        throw new Error(`Generation API failed: ${response.statusText}`);
       }
+
+      setToast({ message: 'AI is thinking... (0 chars)', type: 'loading' });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let fullText = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.candidates && data.candidates[0].content) {
+                const textChunk = data.candidates[0].content.parts[0].text;
+                fullText += textChunk;
+                setToast({ message: `AI is typing... (${fullText.length} chars generated)`, type: 'loading' });
+              }
+            } catch (e) { }
+          }
+        }
+      }
+
+      setToast({ message: 'Parsing and saving roster...', type: 'loading' });
+
+      let cleanJson = fullText
+        .replace(/```json\s*/gi, '')
+        .replace(/```\s*/g, '')
+        .replace(/,\s*]/g, ']')
+        .replace(/,\s*}/g, '}')
+        .trim();
+
+      const startIdx = cleanJson.indexOf('[');
+      const endIdx = cleanJson.lastIndexOf(']');
+      if (startIdx !== -1 && endIdx !== -1) {
+        cleanJson = cleanJson.substring(startIdx, endIdx + 1);
+      }
+
+      const rosterArray = JSON.parse(cleanJson);
+
+      // Bulk update using new API
+      await bulkUpdateRosterEntries(rosterArray);
+
+      setToast({ message: 'Roster generated successfully!', type: 'success' });
+      await loadRoster();
+
     } catch (error) {
       console.error('Error generating roster:', error);
-      setToast({ message: 'Failed to generate roster. Check N8n webhook.', type: 'error' });
+      setToast({ message: 'Failed to generate roster. ' + error.message, type: 'error' });
     }
   };
 
@@ -1144,9 +1673,19 @@ function App() {
 
   // Handle cell update (admin mode)
   const handleCellUpdate = async (date, name, status) => {
-    if (!isAdmin || !selectedTeam) return;
+    if (!isAdmin) return;
+
+    // Find the agent's actual team from the data (critical for All Groups mode)
+    let team = selectedTeam;
+    if (viewMode === 'all' && allTeamsData.length > 0) {
+      const agentEntry = allTeamsData.find(d => d.Name === name);
+      if (agentEntry?.Team) team = agentEntry.Team;
+    }
+
+    if (!team) return;
+
     try {
-      await updateRosterEntry(date, name, status, selectedTeam);
+      await updateRosterEntry(date, name, status, team);
       // Update local state
       setRosterData(prev => prev.map(row =>
         row.Date === date && row.Name === name ? { ...row, Status: status } : row
@@ -1177,35 +1716,57 @@ function App() {
       />
 
       {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <div className="logo-icon">R</div>
-          <span>Roster.AI</span>
+      <aside className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', paddingLeft: sidebarCollapsed ? '0' : '12px' }}>
+          <Logo collapsed={sidebarCollapsed} height="40px" />
         </div>
+
+        <button className="sidebar-toggle" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand' : 'Collapse'}>
+          {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
 
         <nav className="sidebar-nav">
           <button
             className={`nav-item ${view === 'dashboard' ? 'active' : ''}`}
             onClick={() => setView('dashboard')}
+            title="Dashboard"
           >
-            <LayoutGrid size={20} /> Dashboard
+            <LayoutGrid size={20} /> {!sidebarCollapsed && 'Dashboard'}
           </button>
           <button
             className={`nav-item ${view === 'roster' ? 'active' : ''}`}
             onClick={() => setView('roster')}
+            title="Roster View"
           >
-            <TableIcon size={20} /> Roster View
+            <TableIcon size={20} /> {!sidebarCollapsed && 'Roster View'}
           </button>
           <button
             className={`nav-item ${view === 'summary' ? 'active' : ''}`}
             onClick={() => setView('summary')}
+            title="Summary"
           >
-            <PieChart size={20} /> Summary
+            <PieChart size={20} /> {!sidebarCollapsed && 'Summary'}
           </button>
+          <button
+            className={`nav-item ${view === 'requests' ? 'active' : ''}`}
+            onClick={() => setView('requests')}
+            title="Requests"
+          >
+            <FileText size={20} /> {!sidebarCollapsed && 'Requests'}
+          </button>
+          {userIsAdminRole && (
+            <button
+              className={`nav-item ${view === 'review' ? 'active' : ''}`}
+              onClick={() => setView('review')}
+              title="Review Requests"
+            >
+              <CheckSquare size={20} /> {!sidebarCollapsed && 'Review Requests'}
+            </button>
+          )}
         </nav>
 
         <div className="sidebar-footer">
-          {isAdmin && (
+          {isAdmin && !sidebarCollapsed && (
             <>
               <button className="btn btn-generate" onClick={() => setShowGenerator(true)}>
                 <PlusCircle size={18} /> Generate New
@@ -1223,31 +1784,46 @@ function App() {
             </>
           )}
 
-          <button className="btn btn-secondary" onClick={toggleTheme} style={{ justifyContent: 'center' }}>
+          <button className="btn btn-secondary" onClick={toggleTheme} style={{ justifyContent: 'center' }} title="Toggle theme">
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            {theme === 'dark' ? ' Light Mode' : ' Dark Mode'}
+            {!sidebarCollapsed && (theme === 'dark' ? ' Light Mode' : ' Dark Mode')}
           </button>
 
-          <button className="btn btn-refresh" onClick={loadRoster}>
-            <RefreshCw size={18} /> Refresh
+          <button className="btn btn-refresh" onClick={loadRoster} title="Refresh">
+            <RefreshCw size={18} /> {!sidebarCollapsed && 'Refresh'}
           </button>
 
-
-
-          {!isAdmin ? (
+          {userIsAdminRole && (
             <button
-              className="btn btn-admin"
-              onClick={() => setPasswordModalOpen(true)}
+              className={`btn btn-admin ${isAdmin ? 'active' : ''}`}
+              onClick={toggleAdminMode}
+              title={isAdmin ? 'Admin Mode: ON' : 'Admin mode'}
             >
-              <Settings size={18} /> Admin mode
+              <Settings size={18} /> {!sidebarCollapsed && (isAdmin ? 'Admin Mode: ON' : 'Admin mode')}
             </button>
-          ) : (
+          )}
+
+          {userIsAdminRole && (
             <button
-              className="btn btn-admin active"
-              onClick={() => setIsAdmin(false)}
+              className="btn btn-secondary"
+              onClick={() => setShowAdminManager(true)}
+              title="Manage Admins"
             >
-              <Settings size={18} /> Admin Mode: ON
+              <Users size={18} /> {!sidebarCollapsed && 'Manage Admins'}
             </button>
+          )}
+
+          <button className="btn btn-logout" onClick={onLogout} title="Logout">
+            <LogOut size={18} /> {!sidebarCollapsed && 'Logout'}
+          </button>
+
+          {!sidebarCollapsed && userProfile?.name && (
+            <div style={{
+              fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center',
+              padding: '0.5rem 0', borderTop: '1px solid var(--border-color)', marginTop: '0.5rem'
+            }}>
+              Logged in as <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{userProfile.name}</span>
+            </div>
           )}
         </div>
       </aside>
@@ -1281,6 +1857,8 @@ function App() {
             isAdmin={isAdmin}
             loading={loading}
             onCellUpdate={handleCellUpdate}
+            viewMode={viewMode}
+            allTeamsData={allTeamsData}
             headerAction={
               <TeamSelector
                 teams={teams}
@@ -1288,7 +1866,7 @@ function App() {
                 viewMode={viewMode}
                 setViewMode={setViewMode}
                 setSelectedTeam={setSelectedTeam}
-                showAllOption={false}
+                showAllOption={true}
               />
             }
           />
@@ -1309,6 +1887,12 @@ function App() {
               />
             }
           />
+        )}
+        {view === 'requests' && (
+          <RequestsPage userProfile={userProfile} />
+        )}
+        {view === 'review' && userIsAdminRole && (
+          <ReviewRequestsPage onRefreshRoster={loadRoster} />
         )}
       </main>
 
@@ -1339,11 +1923,9 @@ function App() {
         />
       )}
 
-      {passwordModalOpen && (
-        <AdminLoginModal
-          onClose={() => setPasswordModalOpen(false)}
-          onLogin={handleAdminLogin}
-          loggingIn={loggingIn}
+      {showAdminManager && (
+        <AdminManager
+          onClose={() => setShowAdminManager(false)}
         />
       )}
     </div>
