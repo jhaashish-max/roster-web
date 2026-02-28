@@ -1638,8 +1638,24 @@ function AuthenticatedApp({ onLogout }) {
 
       const rosterArray = JSON.parse(cleanJson);
 
+      // Map AI TitleCase keys to database snake_case keys and inject team name
+      const enrichedArray = rosterArray.map(item => ({
+        date: item.Date,
+        name: item.Name,
+        status: item.Status,
+        team: team_name
+      }));
+
+      // Find and delete previous generated roster for this specific month/team
+      const exists = await checkRosterExists(year, month, team_name);
+      if (exists) {
+        setToast({ message: 'Removing old roster entries...', type: 'loading' });
+        await deleteRoster(year, month, team_name);
+      }
+
+      setToast({ message: 'Saving new roster to database...', type: 'loading' });
       // Bulk update using new API
-      await bulkUpdateRosterEntries(rosterArray);
+      await bulkUpdateRosterEntries(enrichedArray);
 
       setToast({ message: 'Roster generated successfully!', type: 'success' });
       await loadRoster();
