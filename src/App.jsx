@@ -49,6 +49,8 @@ const DEFAULT_PROMPT = `You are a Roster Manager. Generate a JSON schedule for t
 **Team List:** {{TEAM_MEMBERS}}
 **Slack Requests:** """{{SLACK_REQUESTS}}"""
 
+{{PREVIOUS_MONTH_DATA}}
+
 ### RULES (Strict Logic)
 1. **Mapping:** Fuzzy match names from Slack to the Team List. 
    - "Sheesh" -> "Ashish"
@@ -60,6 +62,7 @@ const DEFAULT_PROMPT = `You are a Roster Manager. Generate a JSON schedule for t
    - Shifts: Two people on "10:00 - 19:00", One person on "18:00 - 03:00".
    - The *same* 3 people must work both Saturday and Sunday of that specific weekend.
    - These 3 people MUST get 2 compensatory WOs (one in the week before, one in the week after).
+   - **MONTH BOUNDARY RULE:** If the 1st of the month is a Sunday, check the PREVIOUS MONTH DATA above and assign the same people who worked on the Saturday (last day of previous month).
 4. **Weekday Rules (Mon-Fri):**
    - **CONSISTENCY RULE:** Each person must be assigned ONE primary shift type (either "09:00 - 18:00" or "11:00 - 20:00") for the entire month, UNLESS they are on the Night Shift rotation. Do not switch shifts between days for the same person unless explicitly requested.
    - **Team Split:** Assign approximately 50% of the team to the Morning shift ("09:00 - 18:00") and 50% to the Afternoon shift ("11:00 - 20:00").
