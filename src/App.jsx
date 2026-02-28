@@ -1552,117 +1552,24 @@ function AuthenticatedApp({ onLogout }) {
 
   // Handle generate
   const handleGenerate = async (payload) => {
-    setToast({ message: 'Compiling prompt...', type: 'loading' });
+    setToast({ message: 'Generating roster...', type: 'loading' });
 
     try {
-      const { month, year, team_name, team_members, slack_thread, notes, custom_prompt } = payload;
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
-
-      const monthNames = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-      const monthName = monthNames[month];
-
-      let promptText = custom_prompt || DEFAULT_PROMPT;
-      const combinedInput = `${slack_thread}\n\nMore notes:\n${notes}`;
-
-      promptText = promptText
-        .replace(/\{\{TEAM_NAME\}\}/g, team_name)
-        .replace(/\{\{MONTH_NAME\}\}/g, monthName)
-        .replace(/\{\{YEAR\}\}/g, year)
-        .replace(/\{\{TEAM_MEMBERS\}\}/g, JSON.stringify(team_members))
-        .replace(/\{\{SLACK_REQUESTS\}\}/g, combinedInput)
-        .replace(/\{\{START_DATE\}\}/g, format(startDate, 'yyyy-MM-dd'))
-        .replace(/\{\{END_DATE\}\}/g, format(endDate, 'yyyy-MM-dd'))
-        .replace(/\{\{MONTH_PADDED\}\}/g, String(month).padStart(2, '0'));
-
-      setToast({ message: 'Requesting AI generation...', type: 'loading' });
-
-      const sessionData = localStorage.getItem('roster_session');
-      const token = sessionData ? JSON.parse(sessionData).access_token : '';
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://roster-api-bay.vercel.app';
-
-      const response = await fetch(`${apiBase}/api/roster/generate`, {
+      const response = await fetch(N8N_WEBHOOK_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ prompt: promptText })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
-      if (!response.ok) {
-        throw new Error(`Generation API failed: ${response.statusText}`);
+      if (response.ok) {
+        setToast({ message: 'Roster generated successfully!', type: 'success' });
+        await loadRoster();
+      } else {
+        throw new Error('Generation failed');
       }
-
-      setToast({ message: 'AI is thinking... (0 chars)', type: 'loading' });
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let fullText = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.candidates && data.candidates[0].content) {
-                const textChunk = data.candidates[0].content.parts[0].text;
-                fullText += textChunk;
-                setToast({ message: `AI is typing... (${fullText.length} chars generated)`, type: 'loading' });
-              }
-            } catch (e) { }
-          }
-        }
-      }
-
-      setToast({ message: 'Parsing and saving roster...', type: 'loading' });
-
-      let cleanJson = fullText
-        .replace(/```json\s*/gi, '')
-        .replace(/```\s*/g, '')
-        .replace(/,\s*]/g, ']')
-        .replace(/,\s*}/g, '}')
-        .trim();
-
-      const startIdx = cleanJson.indexOf('[');
-      const endIdx = cleanJson.lastIndexOf(']');
-      if (startIdx !== -1 && endIdx !== -1) {
-        cleanJson = cleanJson.substring(startIdx, endIdx + 1);
-      }
-
-      const rosterArray = JSON.parse(cleanJson);
-
-      // Map AI TitleCase keys to database snake_case keys and inject team name
-      const enrichedArray = rosterArray.map(item => ({
-        date: item.Date,
-        name: item.Name,
-        status: item.Status,
-        team: team_name
-      }));
-
-      // Find and delete previous generated roster for this specific month/team
-      const exists = await checkRosterExists(year, month, team_name);
-      if (exists) {
-        setToast({ message: 'Removing old roster entries...', type: 'loading' });
-        await deleteRoster(year, month, team_name);
-      }
-
-      setToast({ message: 'Saving new roster to database...', type: 'loading' });
-      // Bulk update using new API
-      await bulkUpdateRosterEntries(enrichedArray);
-
-      setToast({ message: 'Roster generated successfully!', type: 'success' });
-      await loadRoster();
-
     } catch (error) {
       console.error('Error generating roster:', error);
-      setToast({ message: 'Failed to generate roster. ' + error.message, type: 'error' });
+      setToast({ message: 'Failed to generate roster. Check N8n webhook.', type: 'error' });
     }
   };
 
