@@ -380,3 +380,22 @@ export async function reviewRequest(id, decision) {
     return data;
 }
 
+
+// ==================== MEMBER EMAILS FUNCTIONS ====================
+
+export async function getTeamEmails() {
+    const res = await authFetch('/api/teams/emails');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    return data;
+}
+
+export async function updateTeamEmails(emails) {
+    const res = await authFetch('/api/teams/emails', {
+        method: 'POST',
+        body: JSON.stringify({ emails })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    return data;
+}

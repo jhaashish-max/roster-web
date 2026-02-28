@@ -33,7 +33,7 @@ import LoginPage from './components/LoginPage';
 import Logo from './components/Logo';
 import { Sun, Moon, LogOut } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend, isAfter, isBefore, parseISO, startOfDay, isSameDay } from 'date-fns';
-import { fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam, isLoggedIn, getUserEmail, logout as authLogout, handleAuthCallback, checkAdmin, listAdmins, addAdmin, removeAdmin, whoAmI, createLeaveRequest, getMyRequests, getPendingRequests, reviewRequest, bulkUpdateRosterEntries } from './lib/api';
+import { fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam, isLoggedIn, getUserEmail, logout as authLogout, handleAuthCallback, checkAdmin, listAdmins, addAdmin, removeAdmin, whoAmI, createLeaveRequest, getMyRequests, getPendingRequests, reviewRequest, bulkUpdateRosterEntries, getTeamEmails, updateTeamEmails } from './lib/api';
 import { FileText, CheckSquare } from 'lucide-react';
 
 // N8n Webhook URL - Using Vite proxy to bypass CORS in Dev, Direct URL in Prod
@@ -904,6 +904,7 @@ const AdminManager = ({ onClose }) => {
 // 4. TEAM SETTINGS MODAL
 const TeamSettings = ({ onClose, onTeamsChange }) => {
   const [teams, setTeams] = useState([]);
+  const [memberEmails, setMemberEmails] = useState({});
   const [loading, setLoading] = useState(true);
   const [editingTeam, setEditingTeam] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -923,8 +924,18 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
 
   const loadTeams = async () => {
     setLoading(true);
-    const data = await getTeams();
-    setTeams(data);
+    try {
+      const [data, emailsData] = await Promise.all([getTeams(), getTeamEmails()]);
+      setTeams(data);
+
+      const emailMap = {};
+      if (emailsData && Array.isArray(emailsData)) {
+        emailsData.forEach(e => { emailMap[e.name] = e.email; });
+      }
+      setMemberEmails(emailMap);
+    } catch (err) {
+      console.error('Failed to load teams or emails:', err);
+    }
     setLoading(false);
   };
 
@@ -953,7 +964,14 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
 
   const startEdit = (team) => {
     setFormName(team.name);
-    setFormMembers(team.members.join('\n'));
+
+    // Map existing member emails if available
+    const membersWithEmail = team.members.map(name => {
+      const email = memberEmails[name] || '';
+      return email ? `${name}, ${email}` : name;
+    });
+
+    setFormMembers(membersWithEmail.join('\n'));
     setFormPrompt(team.custom_prompt || '');
     setShowPromptEditor(!!team.custom_prompt);
     setEditingTeam(team);
@@ -964,22 +982,42 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
     if (!formName.trim() || !formMembers.trim()) return;
 
     setSaving(true);
-    const membersArray = formMembers.split('\n').map(m => m.trim()).filter(m => m);
 
-    if (isCreating) {
-      await createTeam(formName, membersArray, formPrompt || null);
-    } else if (editingTeam) {
-      await updateTeam(editingTeam.id, {
-        name: formName,
-        members: membersArray,
-        custom_prompt: formPrompt || null
-      });
+    const membersArray = [];
+    const emailUpdates = [];
+
+    formMembers.split('\n').filter(m => m.trim()).forEach(line => {
+      const parts = line.split(',');
+      const name = parts[0].trim();
+      membersArray.push(name);
+
+      if (parts[1]) {
+        emailUpdates.push({ name, email: parts[1].trim() });
+      }
+    });
+
+    try {
+      if (isCreating) {
+        await createTeam(formName, membersArray, formPrompt || null);
+      } else if (editingTeam) {
+        await updateTeam(editingTeam.id, {
+          name: formName,
+          members: membersArray,
+          custom_prompt: formPrompt || null
+        });
+      }
+
+      if (emailUpdates.length > 0) {
+        await updateTeamEmails(emailUpdates);
+      }
+
+      await loadTeams();
+      resetForm();
+      if (onTeamsChange) onTeamsChange();
+    } catch (err) {
+      console.error('Error saving team:', err);
     }
-
-    await loadTeams();
-    resetForm();
     setSaving(false);
-    if (onTeamsChange) onTeamsChange();
   };
 
   const handleDelete = async (teamId) => {
@@ -1054,10 +1092,11 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
                 </div>
 
                 <div className="form-group">
-                  <label>Team Members (one per line)</label>
+                  <label>Team Members (Name, Email - one per line)</label>
                   <textarea
                     rows={8}
-                    placeholder="John Doe&#10;Jane Smith&#10;..."
+                    className="form-textarea"
+                    placeholder="John Doe, john@razorpay.com&#10;Jane Smith, jane@razorpay.com&#10;..."
                     value={formMembers}
                     onChange={(e) => setFormMembers(e.target.value)}
                   />
