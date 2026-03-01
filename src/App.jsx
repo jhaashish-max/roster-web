@@ -163,22 +163,39 @@ const getStatusClass = (status, dateObj) => {
   if (s === 'PL' || s === 'SL') return 'cell-leave';
   if (s === 'WL') return 'cell-wl';
 
-  // Morning shift (07:00 or 09:00)
-  if (s.includes('07:00') || s.includes('09:00') || s.includes('9:00') || s.includes('9 - 6')) {
-    if (s.includes('07:00') && dateObj && isWeekend(dateObj)) {
-      return 'cell-oncall';
+  // Explicit string matches first
+  if (s.includes('10:00 - 22:00') || s.includes('ON CALL') || s.includes('ONCALL')) return 'cell-oncall';
+  if (s.includes('HOLIDAY') || s === 'HL' || s === 'AVAILABLE') return 'cell-holiday';
+  if (s === 'WFH') return 'cell-wfh';
+
+  // Parse time for Morning, Afternoon, Night
+  const timeMatch = s.match(/^(\\d{1,2}):/);
+  if (timeMatch) {
+    const hour = parseInt(timeMatch[1], 10);
+
+    // Any shift from 7 to 10:59 is Morning
+    if (hour >= 7 && hour < 11) {
+      if (hour === 7 && dateObj && isWeekend(dateObj)) {
+        return 'cell-oncall';
+      }
+      return 'cell-morning';
     }
-    return 'cell-morning';
+
+    // Any shift from 11 to 17:59 is Afternoon
+    if (hour >= 11 && hour < 18) {
+      return 'cell-afternoon';
+    }
+
+    // Any shift 18 or beyond is Night
+    if (hour >= 18) {
+      return 'cell-night';
+    }
   }
 
-  // On-call / 10:00-22:00
-  if (s.includes('10:00 - 22:00') || s.includes('ON CALL') || s.includes('ONCALL')) return 'cell-oncall';
-
-  // Night shift
-  if (s.includes('NIGHT') || s.startsWith('18:') || s.startsWith('19:') || s.startsWith('20:')) return 'cell-night';
-
-  // Late shift / Afternoon (11:00 - 20:00 or 12:00 - 21:00)
-  if (s.includes('11:00') || s.includes('11-8') || s.includes('11 - 8') || s.includes('12:00')) return 'cell-afternoon';
+  // Fallback for non-standard formats like "11-8" or "9 - 6"
+  if (s.includes('9 - 6')) return 'cell-morning';
+  if (s.includes('11-8') || s.includes('11 - 8')) return 'cell-afternoon';
+  if (s.includes('NIGHT')) return 'cell-night';
 
   // Holiday / Available
   if (s.includes('HOLIDAY') || s === 'HL' || s === 'AVAILABLE') return 'cell-holiday';
@@ -196,9 +213,18 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
     return {
       total: todayData.length,
       working: working.length,
-      morning: todayData.filter(d => d.Status === '09:00 - 18:00' || d.Status === '07:00 - 16:00').length,
-      afternoon: todayData.filter(d => d.Status === '11:00 - 20:00' || d.Status === '10:00 - 19:00' || d.Status === '06:00 - 15:00' || d.Status === '12:00 - 21:00').length,
-      night: todayData.filter(d => d.Status === '18:00 - 03:00').length,
+      morning: todayData.filter(d => {
+        const h = parseInt(d.Status.split(':')[0], 10);
+        return h >= 7 && h <= 10;
+      }).length,
+      afternoon: todayData.filter(d => {
+        const h = parseInt(d.Status.split(':')[0], 10);
+        return h >= 11 && h <= 17;
+      }).length,
+      night: todayData.filter(d => {
+        const h = parseInt(d.Status.split(':')[0], 10);
+        return h >= 18;
+      }).length,
       leave: todayData.filter(d => d.Status === 'PL' || d.Status === 'SL' || d.Status === 'WFH').length,
       wo: todayData.filter(d => d.Status === 'WO').length,
       wl: todayData.filter(d => d.Status === 'WL').length,
