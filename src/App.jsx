@@ -213,7 +213,9 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
     const viewMonthEnd = endOfMonth(currentDate);
 
     return rosterData.filter(d => {
-      const dDate = parseISO(d.Date);
+      // Construct Date in local timezone scope to prevent UTC translation
+      const [year, month, day] = d.Date.split('-');
+      const dDate = new Date(year, month - 1, day);
       if (isBefore(dDate, today) || isSameDay(dDate, today)) return false;
       if (isAfter(dDate, viewMonthEnd)) return false;
 
