@@ -168,8 +168,8 @@ const getStatusClass = (status, dateObj) => {
   if (s.includes('HOLIDAY') || s === 'HL' || s === 'AVAILABLE') return 'cell-holiday';
   if (s === 'WFH') return 'cell-wfh';
 
-  // Parse time for Morning, Afternoon, Night
-  const timeMatch = s.match(/^(\\d{1,2}):/);
+  // Parse time for Morning, Afternoon, Night by finding the first hour digits
+  const timeMatch = s.match(/(\\d{1,2}):/);
   if (timeMatch) {
     const hour = parseInt(timeMatch[1], 10);
 
@@ -214,15 +214,21 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
       total: todayData.length,
       working: working.length,
       morning: todayData.filter(d => {
-        const h = parseInt(d.Status.split(':')[0], 10);
+        const m = d.Status.match(/(\\d{1,2}):/);
+        if (!m) return false;
+        const h = parseInt(m[1], 10);
         return h >= 7 && h <= 10;
       }).length,
       afternoon: todayData.filter(d => {
-        const h = parseInt(d.Status.split(':')[0], 10);
+        const m = d.Status.match(/(\\d{1,2}):/);
+        if (!m) return false;
+        const h = parseInt(m[1], 10);
         return h >= 11 && h <= 17;
       }).length,
       night: todayData.filter(d => {
-        const h = parseInt(d.Status.split(':')[0], 10);
+        const m = d.Status.match(/(\\d{1,2}):/);
+        if (!m) return false;
+        const h = parseInt(m[1], 10);
         return h >= 18;
       }).length,
       leave: todayData.filter(d => d.Status === 'PL' || d.Status === 'SL' || d.Status === 'WFH').length,
