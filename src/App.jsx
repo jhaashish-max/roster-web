@@ -180,8 +180,8 @@ const getStatusClass = (status, dateObj) => {
   // Late shift / Afternoon (11:00 - 20:00 or 12:00 - 21:00)
   if (s.includes('11:00') || s.includes('11-8') || s.includes('11 - 8') || s.includes('12:00')) return 'cell-afternoon';
 
-  // Holiday
-  if (s.includes('HOLIDAY') || s === 'HL') return 'cell-holiday';
+  // Holiday / Available
+  if (s.includes('HOLIDAY') || s === 'HL' || s === 'AVAILABLE') return 'cell-holiday';
 
   if (s === 'WFH') return 'cell-wfh';
   return 'cell-other';
