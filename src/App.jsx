@@ -169,7 +169,7 @@ const getStatusClass = (status, dateObj) => {
   if (s === 'WFH') return 'cell-wfh';
 
   // Parse time for Morning, Afternoon, Night by finding the first hour digits
-  const timeMatch = s.match(/(\\d{1,2}):/);
+  const timeMatch = s.match(/(\d{1,2}):/);
   if (timeMatch) {
     const hour = parseInt(timeMatch[1], 10);
 
@@ -214,19 +214,19 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
       total: todayData.length,
       working: working.length,
       morning: todayData.filter(d => {
-        const m = d.Status.match(/(\\d{1,2}):/);
+        const m = d.Status.match(/(\d{1,2}):/);
         if (!m) return false;
         const h = parseInt(m[1], 10);
         return h >= 7 && h <= 10;
       }).length,
       afternoon: todayData.filter(d => {
-        const m = d.Status.match(/(\\d{1,2}):/);
+        const m = d.Status.match(/(\d{1,2}):/);
         if (!m) return false;
         const h = parseInt(m[1], 10);
         return h >= 11 && h <= 17;
       }).length,
       night: todayData.filter(d => {
-        const m = d.Status.match(/(\\d{1,2}):/);
+        const m = d.Status.match(/(\d{1,2}):/);
         if (!m) return false;
         const h = parseInt(m[1], 10);
         return h >= 18;
@@ -403,9 +403,13 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
 };
 
 const getShiftClass = (status) => {
-  if (status.includes('07:00') || status.includes('09:00')) return 'shift-morning';
-  if (status.includes('10:00') || status.includes('11:00') || status.includes('12:00')) return 'shift-afternoon';
-  if (status.includes('18:00')) return 'shift-night';
+  const timeMatch = status.match(/(\d{1,2}):/);
+  if (timeMatch) {
+    const hour = parseInt(timeMatch[1], 10);
+    if (hour >= 7 && hour < 11) return 'shift-morning';
+    if (hour >= 11 && hour < 18) return 'shift-afternoon';
+    if (hour >= 18) return 'shift-night';
+  }
   return '';
 };
 
