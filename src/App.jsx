@@ -1725,7 +1725,19 @@ function AuthenticatedApp({ onLogout }) {
   const [teams, setTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(''); // kept for DeleteConfirm compat
   const [viewMode, setViewMode] = useState('all'); // always 'all' for multi-team grouping
-  const [selectedTeams, setSelectedTeams] = useState([]); // [] = All Groups
+  const [selectedTeams, setSelectedTeams] = useState(() => {
+    try {
+      const saved = localStorage.getItem('roster_selected_teams');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  }); // [] = All Groups
+
+  useEffect(() => {
+    localStorage.setItem('roster_selected_teams', JSON.stringify(selectedTeams));
+  }, [selectedTeams]);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === 'true');
 
   const toggleSidebar = () => {
