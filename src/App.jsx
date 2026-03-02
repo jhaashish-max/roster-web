@@ -127,30 +127,63 @@ const LiveClock = () => {
   );
 };
 
-// Team Selector Component
-const TeamSelector = ({ teams, selectedTeam, viewMode, setViewMode, setSelectedTeam, showAllOption }) => (
-  <div className="team-selector-inline">
-    <label>Team:</label>
-    <select
-      value={viewMode === 'all' ? 'all-groups' : selectedTeam}
-      onChange={(e) => {
-        const val = e.target.value;
-        if (val === 'all-groups') {
-          setViewMode('all');
-        } else {
-          setViewMode('single');
-          setSelectedTeam(val);
-        }
-      }}
-      className="form-select"
-    >
-      {showAllOption && <option value="all-groups">All Groups</option>}
-      {teams.map(t => (
-        <option key={t.id} value={t.name}>{t.name}</option>
-      ))}
-    </select>
-  </div>
-);
+// Multi-select Team Selector Component
+const TeamSelector = ({ teams, selectedTeams, setSelectedTeams }) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const allSelected = selectedTeams.length === 0;
+
+  const toggleAll = () => setSelectedTeams([]);
+
+  const toggleTeam = (name) => {
+    setSelectedTeams(prev =>
+      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+    );
+  };
+
+  const label = allSelected
+    ? 'All Groups'
+    : selectedTeams.length === 1
+      ? selectedTeams[0]
+      : `${selectedTeams.length} Teams`;
+
+  return (
+    <div className="team-selector-inline" ref={ref} style={{ position: 'relative' }}>
+      <label>TEAM:</label>
+      <div className="multi-team-btn" onClick={() => setOpen(o => !o)} title={selectedTeams.join(', ') || 'All Groups'}>
+        {label} <span style={{ fontSize: '0.6rem', marginLeft: 4, color: 'var(--text-muted)' }}>{open ? '▲' : '▼'}</span>
+      </div>
+      {open && (
+        <div className="multi-team-dropdown">
+          <label className="multi-team-option">
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+            <span>All Groups</span>
+          </label>
+          <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.25rem 0' }} />
+          {teams.map(t => (
+            <label key={t.id} className="multi-team-option">
+              <input
+                type="checkbox"
+                checked={selectedTeams.includes(t.name)}
+                onChange={() => toggleTeam(t.name)}
+              />
+              <span>{t.name}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // 1. DASHBOARD
 // Helper for status classes
@@ -1552,8 +1585,9 @@ function AuthenticatedApp({ onLogout }) {
 
   // Teams state
   const [teams, setTeams] = useState([]);
-  const [selectedTeam, setSelectedTeam] = useState('');
-  const [viewMode, setViewMode] = useState('all'); // 'single' or 'all'
+  const [selectedTeam, setSelectedTeam] = useState(''); // kept for DeleteConfirm compat
+  const [viewMode, setViewMode] = useState('all'); // always 'all' for multi-team grouping
+  const [selectedTeams, setSelectedTeams] = useState([]); // [] = All Groups
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === 'true');
 
   const toggleSidebar = () => {
@@ -1583,25 +1617,29 @@ function AuthenticatedApp({ onLogout }) {
     }
   };
 
-  // Fetch roster data when month, team, or viewMode changes
+  // Fetch roster data when month or selected teams change
   const loadRoster = useCallback(async () => {
     setLoading(true);
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth() + 1;
 
     try {
-      if (viewMode === 'all') {
-        // In "all" mode, only fetch all teams data
+      if (selectedTeams.length === 0) {
+        // No filter = load ALL teams
         const allDataMap = await fetchAllTeamsRoster(year, month);
         const flatData = Object.values(allDataMap).flat();
         setAllTeamsData(flatData);
         setRosterData(flatData);
         setRosterExists(flatData.length > 0);
-      } else if (selectedTeam) {
-        // In "single" mode, fetch only selected team
-        const data = await fetchRoster(year, month, selectedTeam);
-        setRosterData(data);
-        setRosterExists(data.length > 0);
+      } else {
+        // Parallel-fetch only the selected teams, then combine
+        const results = await Promise.all(
+          selectedTeams.map(teamName => fetchRoster(year, month, teamName).catch(() => []))
+        );
+        const flatData = results.flat();
+        setAllTeamsData(flatData);
+        setRosterData(flatData);
+        setRosterExists(flatData.length > 0);
       }
     } catch (error) {
       console.error('Error loading roster:', error);
@@ -1609,7 +1647,7 @@ function AuthenticatedApp({ onLogout }) {
     } finally {
       setLoading(false);
     }
-  }, [currentDate, selectedTeam, viewMode]);
+  }, [currentDate, selectedTeams]);
 
   useEffect(() => {
     loadRoster();
@@ -1836,18 +1874,15 @@ function AuthenticatedApp({ onLogout }) {
       <main className="main-content">
         {view === 'dashboard' && (
           <Dashboard
-            rosterData={viewMode === 'all' ? allTeamsData : rosterData}
+            rosterData={allTeamsData}
             currentDate={currentDate}
             onChangeDate={handleDateChange}
             loading={loading}
             headerAction={
               <TeamSelector
                 teams={teams}
-                selectedTeam={selectedTeam}
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-                setSelectedTeam={setSelectedTeam}
-                showAllOption={true}
+                selectedTeams={selectedTeams}
+                setSelectedTeams={setSelectedTeams}
               />
             }
           />
@@ -1860,16 +1895,13 @@ function AuthenticatedApp({ onLogout }) {
             isAdmin={isAdmin}
             loading={loading}
             onCellUpdate={handleCellUpdate}
-            viewMode={viewMode}
+            viewMode="all"
             allTeamsData={allTeamsData}
             headerAction={
               <TeamSelector
                 teams={teams}
-                selectedTeam={selectedTeam}
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-                setSelectedTeam={setSelectedTeam}
-                showAllOption={true}
+                selectedTeams={selectedTeams}
+                setSelectedTeams={setSelectedTeams}
               />
             }
           />
@@ -1877,16 +1909,13 @@ function AuthenticatedApp({ onLogout }) {
         {view === 'summary' && (
           <Summary
             currentDate={currentDate}
-            selectedTeam={selectedTeam}
-            viewMode={viewMode}
+            selectedTeam={selectedTeams.length === 1 ? selectedTeams[0] : ''}
+            viewMode={selectedTeams.length <= 1 ? 'single' : 'all'}
             headerAction={
               <TeamSelector
                 teams={teams}
-                selectedTeam={selectedTeam}
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-                setSelectedTeam={setSelectedTeam}
-                showAllOption={true}
+                selectedTeams={selectedTeams}
+                setSelectedTeams={setSelectedTeams}
               />
             }
           />
