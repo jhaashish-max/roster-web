@@ -1536,65 +1536,6 @@ body.light-mode input[type="date"] {
   cursor: pointer;
 }
 
-/* Multi-select Team Dropdown */
-.multi-team-btn {
-  padding: 0.25rem 0.75rem;
-  font-size: 0.8rem;
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  min-width: 120px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  user-select: none;
-  font-weight: 500;
-}
-
-.multi-team-chevron {
-  font-size: 0.6rem;
-  color: var(--text-muted);
-}
-
-.multi-team-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  padding: 0.5rem 0;
-  z-index: 200;
-  min-width: 200px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.multi-team-option {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  font-size: 0.82rem;
-  color: var(--text-primary);
-  transition: background 0.15s;
-}
-
-.multi-team-option:hover {
-  background: var(--bg-hover);
-}
-
-.multi-team-option input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
-  accent-color: #4285f4;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
 .view-toggle {
   display: flex;
   gap: 0.25rem;
@@ -1602,7 +1543,6 @@ body.light-mode input[type="date"] {
   padding: 4px;
   border-radius: 8px;
 }
-
 
 .toggle-btn {
   padding: 0.5rem 1rem;
@@ -2669,7 +2609,6 @@ body.light-mode input[type="date"] {
 .light-mode .login-input {
   background: #f5f5f5;
 }
-
 .selected-cell {
   background: rgba(0, 115, 255, 0.4) !important;
   border: 1px solid var(--accent-primary) !important;
