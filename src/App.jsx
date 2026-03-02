@@ -345,11 +345,11 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
             </div>
             <div className="stat-card">
               <h3>Leave</h3>
-              <div className="stat-value" style={{ color: 'var(--leave-text)' }}>{stats.leave}</div>
+              <div className="stat-value" style={{ color: 'var(--text-muted)' }}>{stats.leave}</div>
             </div>
             <div className="stat-card">
               <h3>WO</h3>
-              <div className="stat-value" style={{ color: 'var(--text-muted)' }}>{stats.wo}</div>
+              <div className="stat-value" style={{ color: 'var(--leave-text)' }}>{stats.wo}</div>
             </div>
             {stats.wl > 0 && (
               <div className="stat-card">
