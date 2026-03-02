@@ -2,23 +2,25 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #12121a;
-  --bg-card: #1a1a24;
-  --bg-hover: #22222e;
-  --bg-modal: #1a1a24;
-  --bg-overlay: rgba(0, 0, 0, 0.85);
+  /* Clean, light SaaS theme */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
+  --bg-modal: #ffffff;
+  --bg-overlay: rgba(15, 23, 42, 0.4);
 
-  --text-primary: #f4f4f5;
-  --text-secondary: #a1a1aa;
-  --text-muted: #8b8b94;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
 
-  --accent-primary: #0073FF;
-  --accent-secondary: #005FCC;
-  --accent-success: #22c55e;
-  --accent-warning: #eab308;
-  --accent-danger: #ef4444;
+  --accent-primary: #2563eb;
+  --accent-secondary: #1d4ed8;
+  --accent-success: #16a34a;
+  --accent-warning: #ea580c;
+  --accent-danger: #dc2626;
 
+  /* Strict Rule: Roster cell colors unchanged */
   --morning: #b6d7a8;
   --afternoon: #cfe2f3;
   --night: #000000;
@@ -29,38 +31,22 @@
   --oncall: #6aa84f;
   --holiday: #a4c2f4;
 
-  --border-color: rgba(255, 255, 255, 0.08);
-  --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  /* Text variants for readable stats on white backgrounds */
+  --morning-text: #15803d;
+  /* Dark green */
+  --afternoon-text: #1d4ed8;
+  /* Dark blue */
+  --leave-text: #ca8a04;
+  /* Dark gold/yellow */
 
-  --weekend-header: #1e1e2a;
-  --weekend-cell: rgba(255, 255, 255, 0.02);
-}
+  --border-color: #e2e8f0;
+  --border-light: #f1f5f9;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 
-.light-mode {
-  --bg-primary: #f3f4f6;
-  --bg-secondary: #ffffff;
-  --bg-card: #ffffff;
-  --bg-hover: #f9fafb;
-  --bg-modal: #ffffff;
-  --bg-overlay: rgba(0, 0, 0, 0.5);
-
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #6b7280;
-
-  --border-color: #e5e7eb;
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-
-  --weekend-header: #f3f4f6;
-  --weekend-cell: rgba(0, 0, 0, 0.02);
-
-  --morning: #2563eb;
-  --afternoon: #9333ea;
-  --night: #334155;
-  --leave: #dc2626;
-  --wo: #4b5563;
-  --wfh: #d97706;
-  --wl: #db2777;
+  --weekend-header: #f8fafc;
+  --weekend-cell: #f8fafc;
 }
 
 * {
@@ -199,7 +185,8 @@ body {
 }
 
 .nav-item.active {
-  background: rgba(139, 92, 246, 0.12);
+  background: rgba(37, 99, 235, 0.12);
+  /* Blue tint to match accent-primary */
   color: var(--accent-primary);
   font-weight: 600;
 }
@@ -218,14 +205,15 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.8rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.85rem;
   cursor: pointer;
-  transition: all 0.15s ease;
-  border: none;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
   outline: none;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn:focus-visible {
@@ -233,7 +221,7 @@ body {
 }
 
 .btn:active {
-  transform: scale(0.97);
+  transform: translateY(1px);
 }
 
 .btn-primary {
@@ -295,15 +283,24 @@ body {
 /* Main Content */
 .main-content {
   flex: 1;
-  padding: 2.5rem 2rem 2rem 2rem;
   overflow-y: auto;
   background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
 }
 
 /* Dashboard */
 .dashboard-container {
   max-width: 1400px;
   margin: 0 auto;
+  padding: 1.5rem;
+  width: 100%;
+}
+
+.summary-page,
+.requests-page,
+.review-page {
+  padding: 1.5rem;
 }
 
 .dashboard-header,
@@ -344,19 +341,20 @@ body {
 .stat-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 150px;
-  transition: transform 0.2s, border-color 0.2s;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s, border-color 0.2s;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--text-muted);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-light);
 }
 
 .stat-card h3 {
@@ -587,7 +585,88 @@ body {
   font-weight: 600;
 }
 
-.shift-list,
+/* New Segmented Dashboard Schedule */
+.segmented-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.schedule-block {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.block-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: var(--bg-hover);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.block-morning .block-header {
+  background: rgba(59, 130, 246, 0.08);
+  /* Blue tint background */
+  color: var(--afternoon-text);
+  /* Use afternoon (blue) text here to match background tint */
+  border-bottom-color: rgba(59, 130, 246, 0.15);
+}
+
+.block-afternoon .block-header {
+  background: rgba(168, 85, 247, 0.08);
+  /* Purple tint */
+  color: #7e22ce;
+  /* Dark purple */
+  border-bottom-color: rgba(168, 85, 247, 0.15);
+}
+
+.block-night .block-header {
+  background: rgba(71, 85, 105, 0.08);
+  color: #64748b;
+  border-bottom-color: rgba(71, 85, 105, 0.15);
+}
+
+.block-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--bg-card);
+}
+
+.shift-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.shift-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-color: var(--border-light);
+}
+
+.empty-slot {
+  grid-column: 1 / -1;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
 .leave-list {
   display: flex;
   flex-direction: column;
@@ -597,7 +676,6 @@ body {
   overflow-y: auto;
 }
 
-.shift-item,
 .leave-item {
   display: flex;
   align-items: center;
@@ -772,23 +850,25 @@ body {
 }
 
 .team-section-header {
-  background: #1c4587;
-  color: #ffffff;
-  font-weight: 700;
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  font-weight: 600;
   font-size: 0.9em;
-  padding: 0.45em 1em;
-  border-radius: 6px 6px 0 0;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
 }
 
 .roster-table-wrapper {
   overflow-x: auto;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .roster-team-section .roster-table-wrapper {
-  border-radius: 0 0 10px 10px;
+  border-radius: 0 0 8px 8px;
 }
 
 .roster-table {
@@ -799,14 +879,14 @@ body {
 
 .roster-table th,
 .roster-table td {
-  padding: 0.5rem 0.4rem;
+  padding: 0.5rem 0.5rem;
   text-align: center;
-  border: 1px solid #d0d0d0;
+  border: 1px solid #e5e7eb;
   white-space: nowrap;
 }
 
 .roster-table tbody tr {
-  transition: background 0.1s ease;
+  transition: background 0.15s ease;
 }
 
 .roster-table tbody tr:hover {
@@ -814,15 +894,14 @@ body {
 }
 
 .roster-table th {
-  background: var(--bg-secondary);
+  background: #ffffff;
   font-weight: 600;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
   position: sticky;
   top: 0;
   z-index: 10;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
 }
 
 .day-num {
@@ -838,11 +917,11 @@ body {
 }
 
 .weekend-header {
-  background: var(--weekend-header) !important;
+  background: #f8fafc !important;
 }
 
 .weekend-cell {
-  background: var(--weekend-cell);
+  background: #f8fafc;
 }
 
 /* Today column highlight */
@@ -859,11 +938,12 @@ body {
 .sticky-col {
   position: sticky;
   left: 0;
-  background: var(--bg-secondary);
+  background: #ffffff;
   z-index: 5;
-  min-width: 130px;
+  min-width: 180px;
   text-align: left !important;
-  padding-left: 1rem !important;
+  padding-left: 1.2rem !important;
+  border-right: 1px solid #e5e7eb !important;
 }
 
 .agent-cell {
@@ -882,7 +962,7 @@ body {
 
 /* Selection Highlighting - Spreadsheet Style */
 .selected-cell {
-  outline: 2px solid #4285f4 !important;
+  outline: 2px solid var(--accent-primary) !important;
   outline-offset: -2px;
   z-index: 2;
   position: relative;
@@ -1049,7 +1129,7 @@ body {
 .modal-content {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 20px;
+  border-radius: 12px;
   padding: 2rem;
   width: 550px;
   max-width: 90%;
@@ -1235,15 +1315,17 @@ body.light-mode input[type="date"] {
   right: 1.5rem;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.9rem;
   z-index: 200;
-  box-shadow: var(--shadow-lg);
-  animation: slideIn 0.3s ease;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--text-primary);
 }
 
 @keyframes slideIn {
@@ -1259,17 +1341,26 @@ body.light-mode input[type="date"] {
 }
 
 .toast-success {
-  border-color: var(--accent-success);
+  border-left: 4px solid var(--accent-success);
+}
+
+.toast-success svg {
   color: var(--accent-success);
 }
 
 .toast-error {
-  border-color: var(--accent-danger);
+  border-left: 4px solid var(--accent-danger);
+}
+
+.toast-error svg {
   color: var(--accent-danger);
 }
 
 .toast-loading {
-  border-color: var(--accent-primary);
+  border-left: 4px solid var(--accent-primary);
+}
+
+.toast-loading svg {
   color: var(--accent-primary);
 }
 

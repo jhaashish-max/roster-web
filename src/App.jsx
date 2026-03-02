@@ -7,6 +7,9 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
+  Menu,
+  Shield,
+  ShieldCheck,
   Table as TableIcon,
   Wand2,
   Clock,
@@ -24,17 +27,21 @@ import {
   Maximize2,
   Minimize2,
   PieChart,
-  CalendarDays
+  CalendarDays,
+  Sun,
+  Moon,
+  LogOut,
+  FileText,
+  CheckSquare,
+  SunMedium
 } from 'lucide-react';
 import CellEditor from './components/CellEditor';
 import Summary from './components/Summary';
 import CommandPalette from './components/CommandPalette';
 import LoginPage from './components/LoginPage';
 import Logo from './components/Logo';
-import { Sun, Moon, LogOut } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend, isAfter, isBefore, parseISO, startOfDay, isSameDay } from 'date-fns';
 import { fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam, isLoggedIn, getUserEmail, logout as authLogout, handleAuthCallback, checkAdmin, listAdmins, addAdmin, removeAdmin, whoAmI, createLeaveRequest, getMyRequests, getPendingRequests, reviewRequest, bulkUpdateRosterEntries, getTeamEmails, updateTeamEmails } from './lib/api';
-import { FileText, CheckSquare } from 'lucide-react';
 
 // N8n Webhook URL - Using Vite proxy to bypass CORS in Dev, Direct URL in Prod
 const IS_DEV = import.meta.env.DEV;
@@ -312,17 +319,13 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
           <p>Loading roster data...</p>
         </div>
       ) : rosterData.length === 0 ? (
-        <div className="empty-state-large">
-          <Calendar size={48} />
-          <h3>No Roster Found</h3>
-          <p>Generate a new roster for {format(currentDate, 'MMMM yyyy')}</p>
+        <div className="empty-state-large" style={{ background: 'var(--bg-card)', border: '1px dashed var(--border-color)', borderRadius: '12px', padding: '3rem' }}>
+          <Calendar size={32} style={{ color: 'var(--text-muted)' }} />
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>No Roster Found</h3>
+          <p style={{ fontSize: '0.85rem' }}>Generate a new roster for {format(currentDate, 'MMMM yyyy')}</p>
         </div>
       ) : (
-        <>
-
-
-
-          {/* Hero Stats Cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="stats-hero-grid">
             <div className="stat-card">
               <h3>Working</h3>
@@ -330,11 +333,11 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
             </div>
             <div className="stat-card">
               <h3>Morning</h3>
-              <div className="stat-value" style={{ color: 'var(--morning)' }}>{stats.morning}</div>
+              <div className="stat-value" style={{ color: 'var(--morning-text)' }}>{stats.morning}</div>
             </div>
             <div className="stat-card">
               <h3>Afternoon</h3>
-              <div className="stat-value" style={{ color: 'var(--afternoon)' }}>{stats.afternoon}</div>
+              <div className="stat-value" style={{ color: 'var(--afternoon-text)' }}>{stats.afternoon}</div>
             </div>
             <div className="stat-card">
               <h3>Night</h3>
@@ -342,7 +345,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
             </div>
             <div className="stat-card">
               <h3>Leave</h3>
-              <div className="stat-value" style={{ color: 'var(--leave)' }}>{stats.leave}</div>
+              <div className="stat-value" style={{ color: 'var(--leave-text)' }}>{stats.leave}</div>
             </div>
             <div className="stat-card">
               <h3>WO</h3>
@@ -357,32 +360,94 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
           </div>
 
           <div className="panel-grid">
-            <div className="panel">
-              <div className="panel-header">
-                <Briefcase size={18} />
-                <h3>Today's Schedule</h3>
+            <div className="panel" style={{ padding: '1.5rem 2rem' }}>
+              <div className="panel-header" style={{ marginBottom: '1.5rem' }}>
+                <Briefcase size={20} style={{ color: 'var(--accent-primary)' }} />
+                <h3 style={{ fontSize: '1.1rem' }}>Today's Schedule</h3>
               </div>
-              <div className="shift-list">
-                {workingAgents.length > 0 ? workingAgents.map((a, i) => (
-                  <div key={i} className="shift-item">
-                    <div className="agent-avatar" style={{ background: getAvatarColor(a.Name) }}>{a.Name.charAt(0)}</div>
-                    <div className="agent-info">
-                      <div className="agent-name-row">
-                        <div className="agent-name">{a.Name}</div>
-                        {a.Team && <span className="team-tag">{a.Team}</span>}
-                      </div>
-                      <div className={`shift-time ${getShiftClass(a.Status)}`}>{a.Status}</div>
-                    </div>
+              <div className="segmented-schedule">
+                {/* Morning Block */}
+                <div className="schedule-block block-morning">
+                  <div className="block-header">
+                    <Sun size={16} /> <span>Morning Shift</span>
                   </div>
-                )) : <p className="empty-state">No agents scheduled for today.</p>}
+                  <div className="block-list">
+                    {workingAgents.filter(a => getShiftClass(a.Status) === 'shift-morning').length > 0 ? (
+                      workingAgents.filter(a => getShiftClass(a.Status) === 'shift-morning').map((a, i) => (
+                        <div key={i} className="shift-card">
+                          <div className="agent-avatar" style={{ background: getAvatarColor(a.Name) }}>{a.Name.charAt(0)}</div>
+                          <div className="agent-info">
+                            <div className="agent-name-row">
+                              <div className="agent-name">{a.Name}</div>
+                              {a.Team && <span className="team-tag">{a.Team}</span>}
+                            </div>
+                            <div className="shift-time">{a.Status}</div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="empty-slot">No agents scheduled for Morning.</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Afternoon Block */}
+                <div className="schedule-block block-afternoon">
+                  <div className="block-header">
+                    <SunMedium size={16} /> <span>Afternoon Shift</span>
+                  </div>
+                  <div className="block-list">
+                    {workingAgents.filter(a => getShiftClass(a.Status) === 'shift-afternoon').length > 0 ? (
+                      workingAgents.filter(a => getShiftClass(a.Status) === 'shift-afternoon').map((a, i) => (
+                        <div key={i} className="shift-card">
+                          <div className="agent-avatar" style={{ background: getAvatarColor(a.Name) }}>{a.Name.charAt(0)}</div>
+                          <div className="agent-info">
+                            <div className="agent-name-row">
+                              <div className="agent-name">{a.Name}</div>
+                              {a.Team && <span className="team-tag">{a.Team}</span>}
+                            </div>
+                            <div className="shift-time">{a.Status}</div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="empty-slot">No agents scheduled for Afternoon.</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Night Block */}
+                <div className="schedule-block block-night">
+                  <div className="block-header">
+                    <Moon size={16} /> <span>Night Shift</span>
+                  </div>
+                  <div className="block-list">
+                    {workingAgents.filter(a => getShiftClass(a.Status) === 'shift-night').length > 0 ? (
+                      workingAgents.filter(a => getShiftClass(a.Status) === 'shift-night').map((a, i) => (
+                        <div key={i} className="shift-card">
+                          <div className="agent-avatar" style={{ background: getAvatarColor(a.Name) }}>{a.Name.charAt(0)}</div>
+                          <div className="agent-info">
+                            <div className="agent-name-row">
+                              <div className="agent-name">{a.Name}</div>
+                              {a.Team && <span className="team-tag">{a.Team}</span>}
+                            </div>
+                            <div className="shift-time">{a.Status}</div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="empty-slot">No agents scheduled for Night.</div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="right-column-stack">
-              <div className="panel">
-                <div className="panel-header">
-                  <UserX size={18} />
-                  <h3>Not Available ({onLeave.length})</h3>
+            <div className="right-column-stack" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="panel" style={{ padding: '1.5rem 2rem' }}>
+                <div className="panel-header" style={{ marginBottom: '1.5rem' }}>
+                  <UserX size={20} style={{ color: 'var(--accent-danger)' }} />
+                  <h3 style={{ fontSize: '1.1rem' }}>Not Available ({onLeave.length})</h3>
                 </div>
                 {onLeave.length > 0 ? (
                   <div className="leave-list">
@@ -402,10 +467,10 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
                 ) : <p className="empty-state">Everyone is available today.</p>}
               </div>
 
-              <div className="panel" style={{ flex: 1 }}>
-                <div className="panel-header">
-                  <CalendarDays size={18} />
-                  <h3>Upcoming Leaves</h3>
+              <div className="panel" style={{ flex: 1, padding: '1.5rem 2rem' }}>
+                <div className="panel-header" style={{ marginBottom: '1.5rem' }}>
+                  <CalendarDays size={20} style={{ color: 'var(--text-secondary)' }} />
+                  <h3 style={{ fontSize: '1.1rem' }}>Upcoming Leaves</h3>
                 </div>
                 {upcomingLeaves.length > 0 ? (
                   <div className="upcoming-list">
@@ -429,7 +494,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -462,10 +527,15 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
 
   const handleZoom = (delta) => {
     setZoom(prev => {
-      const next = Math.max(0.4, Math.min(1.2, +(prev + delta).toFixed(2)));
+      const next = Math.max(0.4, Math.min(1.5, +(prev + delta).toFixed(2)));
       localStorage.setItem('roster_zoom', next);
       return next;
     });
+  };
+
+  const handleZoomAbsolute = (val) => {
+    setZoom(val);
+    localStorage.setItem('roster_zoom', val);
   };
 
   // Determine which data to render
@@ -541,67 +611,83 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
   const isColumnSelected = (dateStr) => selection?.type === 'column' && selection.col === dateStr;
 
   return (
-    <div className="roster-page">
-      <div className="roster-header">
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <h1 className="dashboard-title">Monthly Roster</h1>
+    <div className="roster-page" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* Controls Card */}
+      <div className="roster-controls-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-card)', padding: '0.75rem 1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '1rem' }}>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 'min-content' }}>
           {headerAction}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div className="zoom-controls">
-            <button className="zoom-btn" onClick={() => handleZoom(-0.1)} title="Zoom out">−</button>
-            <span className="zoom-level">{Math.round(zoom * 100)}%</span>
-            <button className="zoom-btn" onClick={() => handleZoom(0.1)} title="Zoom in">+</button>
+
+        <div className="date-nav" style={{ flex: 1, display: 'flex', justifyContent: 'center', minWidth: '250px' }}>
+          <button className="date-nav-btn" onClick={() => onChangeDate(subMonths(currentDate, 1))} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+            <ChevronLeft size={20} />
+          </button>
+          <div className="date-display" style={{ display: 'flex', alignItems: 'center', fontSize: '1.1rem', fontWeight: 600, minWidth: '160px', justifyContent: 'center', color: 'var(--text-primary)' }}>
+            <Calendar size={18} style={{ marginRight: '8px' }} />
+            {format(currentDate, 'MMMM yyyy')}
           </div>
-          <div className="date-nav">
-            <button className="date-nav-btn" onClick={() => onChangeDate(subMonths(currentDate, 1))}>
-              <ChevronLeft size={20} />
-            </button>
-            <div className="date-display">
-              <Calendar size={18} />
-              {format(currentDate, 'MMMM yyyy')}
-            </div>
-            <button className="date-nav-btn" onClick={() => onChangeDate(addMonths(currentDate, 1))}>
-              <ChevronRight size={20} />
-            </button>
+          <button className="date-nav-btn" onClick={() => onChangeDate(addMonths(currentDate, 1))} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+            <ChevronRight size={20} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, justifyContent: 'flex-end', minWidth: 'min-content' }}>
+          <div className="zoom-slider-container" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>50%</span>
+            <input
+              type="range"
+              min="0.5"
+              max="1.5"
+              step="0.05"
+              value={zoom}
+              onChange={(e) => handleZoomAbsolute(parseFloat(e.target.value))}
+              style={{ width: '120px', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', minWidth: '40px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>150%</span>
           </div>
         </div>
       </div>
 
-      <div className="legend-chips">
-        <span className="legend-chip chip-morning">Morning</span>
-        <span className="legend-chip chip-afternoon">Afternoon</span>
-        <span className="legend-chip chip-oncall">On Call</span>
-        <span className="legend-chip chip-night">Night</span>
-        <span className="legend-chip chip-leave">PL</span>
-        <span className="legend-chip chip-wo">WO</span>
-        <span className="legend-chip chip-wl">WL</span>
-        <span className="legend-chip chip-holiday">Holiday</span>
-        <span className="legend-chip chip-wfh">WFH</span>
+      {/* Legend Card */}
+      <div className="roster-legend-card" style={{ background: 'var(--bg-card)', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+        <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Shift Legend</h3>
+        <div className="legend-chips" style={{ marginBottom: 0 }}>
+          <span className="legend-chip chip-morning">Morning</span>
+          <span className="legend-chip chip-afternoon">Afternoon</span>
+          <span className="legend-chip chip-oncall">On Call</span>
+          <span className="legend-chip chip-night" style={{ background: '#000000', color: '#fff' }}>Night</span>
+          <span className="legend-chip chip-leave">PL</span>
+          <span className="legend-chip chip-wo">WO</span>
+          <span className="legend-chip chip-wl">WL</span>
+          <span className="legend-chip chip-holiday">Holiday</span>
+          <span className="legend-chip chip-wfh">WFH</span>
+        </div>
       </div>
 
       {loading ? (
-        <div className="loading-state">
-          <Loader2 size={32} className="spin" />
-          <p>Loading roster data...</p>
+        <div className="loading-state" style={{ textAlign: 'center', padding: '3rem' }}>
+          <Loader2 size={32} className="spin" style={{ margin: '0 auto', color: 'var(--accent-primary)' }} />
+          <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Loading roster data...</p>
         </div>
       ) : displayData.length === 0 ? (
-        <div className="empty-state-large">
-          <Calendar size={48} />
-          <h3>No Roster Found</h3>
-          <p>Generate a new roster for {format(currentDate, 'MMMM yyyy')}</p>
+        <div className="empty-state-large" style={{ padding: '4rem 2rem', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+          <TableIcon size={32} style={{ color: 'var(--text-muted)', margin: '0 auto 1rem' }} />
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>No Roster Found</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Generate a new roster for {format(currentDate, 'MMMM yyyy')}</p>
         </div>
       ) : (
-        <div className="roster-all-groups" onClick={clearSelection} style={{ zoom: zoom }}>
+        <div className="roster-all-groups" onClick={clearSelection} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {teamGroups.map((group) => (
-            <div key={group.team || 'single'} className="roster-team-section">
+            <div key={group.team || 'single'} className="roster-team-card" style={{ background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
               {group.team && (
-                <div className="team-section-header">
+                <div className="team-section-header" style={{ background: 'transparent', padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
                   {group.team}
                 </div>
               )}
-              <div className="roster-table-wrapper">
-                <table className="roster-table">
+              <div className="roster-table-wrapper" style={{ border: 'none', borderRadius: 0, overflowX: 'auto' }}>
+                <table className="roster-table" style={{ zoom: zoom, width: '100%', borderCollapse: 'collapse', border: 'none' }}>
                   <thead>
                     <tr>
                       <th className="sticky-col corner-cell">Agent</th>
@@ -629,7 +715,9 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
                           className={`sticky-col agent-cell ${isRowSelected(agent) ? 'selected-header' : ''}`}
                           onClick={(e) => handleRowClick(agent, e)}
                         >
-                          {agent}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            {agent}
+                          </div>
                         </td>
                         {days.map(day => {
                           const dateStr = format(day, 'yyyy-MM-dd');
@@ -719,10 +807,15 @@ const Generator = ({ onClose, onGenerate, currentDate, teams = [] }) => {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content">
+      <div className="modal-content" style={{ maxWidth: '600px' }}>
         <div className="modal-header">
-          <Wand2 size={24} className="modal-icon" />
-          <h2>Generate Roster</h2>
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Wand2 size={20} className="modal-icon" />
+              Generate Roster
+            </h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>AI-powered automated roster generation</p>
+          </div>
         </div>
 
         {/* Team Selector */}
@@ -790,7 +883,7 @@ const Generator = ({ onClose, onGenerate, currentDate, teams = [] }) => {
           />
         </div>
 
-        <div className="modal-actions">
+        <div className="modal-actions" style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
           <button className="btn btn-secondary" onClick={onClose} disabled={generating}>
             Cancel
           </button>
@@ -896,10 +989,15 @@ const AdminManager = ({ onClose }) => {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content modal-small">
+      <div className="modal-content modal-small" style={{ maxWidth: '480px' }}>
         <div className="modal-header">
-          <Users size={24} className="modal-icon" />
-          <h2>Manage Admins</h2>
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Users size={20} className="modal-icon" />
+              Manage Admins
+            </h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>Grant or revoke administrator access</p>
+          </div>
         </div>
 
         {error && (
@@ -1101,19 +1199,26 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content modal-large">
-        <div className="modal-header">
-          <Settings size={24} className="modal-icon" />
-          <h2>Team Settings</h2>
-          <button className="modal-close" onClick={onClose}><X size={20} /></button>
+      <div className="modal-content modal-large" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '85vh', maxHeight: '800px' }}>
+        <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+              <Settings size={20} className="modal-icon" />
+              Team Settings
+            </h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>Manage teams, members, and custom AI prompts</p>
+          </div>
+          <button className="modal-close" onClick={onClose} style={{ background: 'var(--bg-hover)', borderRadius: '8px', padding: '0.5rem' }}>
+            <X size={18} style={{ color: 'var(--text-secondary)' }} />
+          </button>
         </div>
 
-        <div className="team-settings-layout">
+        <div className="team-settings-layout" style={{ flex: 1, overflow: 'hidden' }}>
           {/* Teams List */}
-          <div className="teams-list">
-            <div className="teams-list-header">
-              <h3>Teams</h3>
-              <button className="btn btn-small btn-primary" onClick={startCreate}>
+          <div className="teams-list" style={{ borderRight: '1px solid var(--border-color)', background: 'var(--bg-secondary)', padding: '1rem', overflowY: 'auto' }}>
+            <div className="teams-list-header" style={{ marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Teams</h3>
+              <button className="btn btn-primary" onClick={startCreate} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
                 <Plus size={14} /> New
               </button>
             </div>
@@ -1121,25 +1226,42 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
             {loading ? (
               <div className="loading-small"><Loader2 size={20} className="spin" /></div>
             ) : teams.length === 0 ? (
-              <p className="no-teams">No teams created yet</p>
+              <p className="no-teams" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 1rem' }}>No teams created yet</p>
             ) : (
-              <div className="teams-items">
+              <div className="teams-items" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {teams.map(team => (
                   <div
                     key={team.id}
                     className={`team-item ${editingTeam?.id === team.id ? 'active' : ''}`}
                     onClick={() => startEdit(team)}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderRadius: '8px',
+                      background: editingTeam?.id === team.id ? 'var(--bg-card)' : 'transparent',
+                      border: editingTeam?.id === team.id ? '1px solid var(--accent-primary)' : '1px solid transparent',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.2s ease',
+                      boxShadow: editingTeam?.id === team.id ? 'var(--shadow-sm)' : 'none'
+                    }}
                   >
-                    <div className="team-item-info">
-                      <span className="team-name">{team.name}</span>
-                      <span className="team-count">{team.members.length} members</span>
+                    <div className="team-item-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <span className="team-name" style={{ fontSize: '0.9rem', fontWeight: 600, color: editingTeam?.id === team.id ? 'var(--accent-primary)' : 'var(--text-primary)' }}>{team.name}</span>
+                      <span className="team-count" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{team.members.length} members</span>
                     </div>
-                    <button
-                      className="btn-icon btn-delete-small"
-                      onClick={(e) => { e.stopPropagation(); handleDelete(team.id); }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {editingTeam?.id !== team.id && (
+                      <button
+                        className="btn-icon btn-delete-small"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(team.id); }}
+                        style={{ padding: '0.4rem', color: 'var(--text-muted)', opacity: 0.5, transition: 'opacity 0.2s', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.opacity = 1; e.currentTarget.style.color = 'var(--accent-danger)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.opacity = 0.5; e.currentTarget.style.color = 'var(--text-muted)' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1147,23 +1269,32 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
           </div>
 
           {/* Team Form */}
-          <div className="team-form">
+          <div className="team-form" style={{ padding: '1.5rem', overflowY: 'auto', background: 'var(--bg-card)' }}>
             {(isCreating || editingTeam) ? (
               <>
-                <h3>{isCreating ? 'Create New Team' : 'Edit Team'}</h3>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>{isCreating ? 'Create New Team' : 'Edit Team'}</h3>
+                  {editingTeam && (
+                    <button className="btn btn-secondary" onClick={() => handleDelete(editingTeam.id)} style={{ color: 'var(--accent-danger)', borderColor: 'var(--accent-danger)', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                      <Trash2 size={14} /> Delete Team
+                    </button>
+                  )}
+                </div>
 
                 <div className="form-group">
-                  <label>Team Name</label>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'block' }}>Team Name</label>
                   <input
                     type="text"
                     placeholder="e.g., Enterprise-VAS"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
+                    className="form-input"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label>Team Members (Name, Email - one per line)</label>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.2rem', display: 'block' }}>Team Members</label>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Format: Name, Email (one per line)</p>
                   <textarea
                     rows={8}
                     className="form-textarea"
@@ -1173,57 +1304,64 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="checkbox-label">
+                <div className="form-group" style={{ background: 'var(--bg-hover)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', marginTop: '2rem' }}>
+                  <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0, cursor: 'pointer' }}>
                     <input
                       type="checkbox"
                       checked={showPromptEditor}
                       onChange={(e) => handleShowPromptChange(e.target.checked)}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--accent-primary)' }}
                     />
-                    Use Custom AI Prompt
+                    <div>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>Use Custom AI Prompt</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Override the default AI instructions for this specific team</span>
+                    </div>
                   </label>
                 </div>
 
                 {showPromptEditor && (
-                  <div className={`form-group ${isPromptFullscreen ? 'prompt-fullscreen-container' : ''}`}>
-                    <div className="prompt-header">
-                      <label>Custom Prompt</label>
+                  <div className={`form-group ${isPromptFullscreen ? 'prompt-fullscreen-container' : ''}`} style={{ marginTop: '1rem' }}>
+                    <div className="prompt-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Custom Prompt Configuration</label>
                       <button
                         type="button"
-                        className="fullscreen-toggle"
+                        className="btn btn-secondary"
                         onClick={() => setIsPromptFullscreen(!isPromptFullscreen)}
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
                       >
-                        {isPromptFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                        {isPromptFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                        {isPromptFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                        {isPromptFullscreen ? ' Exit Fullscreen' : ' Fullscreen'}
                       </button>
                     </div>
-                    <p className="form-hint">
-                      Use variables: {'{{TEAM_NAME}}'}, {'{{MONTH_NAME}}'}, {'{{YEAR}}'}, {'{{TEAM_MEMBERS}}'}, {'{{SLACK_REQUESTS}}'}, {'{{START_DATE}}'}, {'{{END_DATE}}'}, {'{{MONTH_PADDED}}'}, {'{{PREVIOUS_MONTH_DATA}}'}
+                    <p className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', background: 'var(--bg-secondary)', padding: '0.75rem', borderRadius: '6px', fontFamily: 'JetBrains Mono' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Available Variables:</span> {'{{TEAM_NAME}}'}, {'{{MONTH_NAME}}'}, {'{{YEAR}}'}, {'{{TEAM_MEMBERS}}'}, {'{{SLACK_REQUESTS}}'}, {'{{START_DATE}}'}, {'{{END_DATE}}'}, {'{{MONTH_PADDED}}'}, {'{{PREVIOUS_MONTH_DATA}}'}
                     </p>
                     <textarea
-                      rows={isPromptFullscreen ? 30 : 10}
-                      placeholder="Enter custom AI prompt..."
+                      rows={isPromptFullscreen ? 30 : 12}
+                      placeholder="Enter custom AI prompt instructions here..."
                       value={formPrompt}
                       onChange={(e) => setFormPrompt(e.target.value)}
-                      className="mono-textarea"
+                      className="form-textarea"
+                      style={{ fontFamily: 'JetBrains Mono', fontSize: '0.85rem', lineHeight: 1.5 }}
                     />
                   </div>
                 )}
 
-                <div className="form-actions">
+                <div className="form-actions" style={{ display: 'flex', gap: '1rem', marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)', justifyContent: 'flex-end' }}>
                   <button className="btn btn-secondary" onClick={resetForm} disabled={saving}>
                     Cancel
                   </button>
                   <button className="btn btn-primary" onClick={handleSave} disabled={saving || !formName.trim() || !formMembers.trim()}>
                     {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
-                    {saving ? 'Saving...' : 'Save Team'}
+                    {saving ? 'Saving...' : 'Save Team Configuration'}
                   </button>
                 </div>
               </>
             ) : (
-              <div className="team-form-empty">
-                <Users size={48} />
-                <p>Select a team to edit or create a new one</p>
+              <div className="team-form-empty" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                <Users size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Team Management</h3>
+                <p style={{ fontSize: '0.85rem' }}>Select a team from the list to edit, or click 'New' to create one.</p>
               </div>
             )}
           </div>
@@ -1657,7 +1795,7 @@ function AuthenticatedApp({ onLogout }) {
   const toggleAdminMode = () => {
     if (userIsAdminRole) {
       setIsAdmin(prev => {
-        if (!prev) setToast({ message: 'Admin Access Granted 🔓', type: 'success' });
+        if (!prev) setToast({ message: 'Admin Access Granted', type: 'success' });
         return !prev;
       });
     }
@@ -1739,6 +1877,9 @@ function AuthenticatedApp({ onLogout }) {
     }
   };
 
+  // Topbar Notification mock state
+  const [notifications] = useState([{ id: 1, text: 'New requests pending review' }]);
+
   return (
     <div className="app-layout">
       {/* Toast */}
@@ -1756,38 +1897,41 @@ function AuthenticatedApp({ onLogout }) {
         darkMode={theme === 'dark'}
       />
 
-      {/* Sidebar */}
+      {/* Sidebar - Clean SaaS style */}
       <aside className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', paddingLeft: sidebarCollapsed ? '0' : '12px' }}>
-          <Logo collapsed={sidebarCollapsed} height="40px" />
+        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', paddingLeft: sidebarCollapsed ? '0' : '16px', paddingTop: '8px' }}>
+          <Logo collapsed={sidebarCollapsed} height="36px" />
         </div>
 
         <button className="sidebar-toggle" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand' : 'Collapse'}>
           {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
 
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" style={{ marginTop: '1rem' }}>
           <button
             className={`nav-item ${view === 'dashboard' ? 'active' : ''}`}
             onClick={() => setView('dashboard')}
             title="Dashboard"
           >
-            <LayoutGrid size={20} /> {!sidebarCollapsed && 'Dashboard'}
+            <LayoutGrid size={20} /> {!sidebarCollapsed && 'Overview'}
           </button>
           <button
             className={`nav-item ${view === 'roster' ? 'active' : ''}`}
             onClick={() => setView('roster')}
-            title="Roster View"
+            title="Roster"
           >
-            <TableIcon size={20} /> {!sidebarCollapsed && 'Roster View'}
+            <Calendar size={20} /> {!sidebarCollapsed && 'Roster'}
           </button>
           <button
             className={`nav-item ${view === 'summary' ? 'active' : ''}`}
             onClick={() => setView('summary')}
-            title="Summary"
+            title="Reports"
           >
-            <PieChart size={20} /> {!sidebarCollapsed && 'Summary'}
+            <PieChart size={20} /> {!sidebarCollapsed && 'Reports'}
           </button>
+
+          <div style={{ height: '1px', background: 'var(--border-color)', margin: '1rem 0' }} />
+
           <button
             className={`nav-item ${view === 'requests' ? 'active' : ''}`}
             onClick={() => setView('requests')}
@@ -1799,134 +1943,117 @@ function AuthenticatedApp({ onLogout }) {
             <button
               className={`nav-item ${view === 'review' ? 'active' : ''}`}
               onClick={() => setView('review')}
-              title="Review Requests"
+              title="Review"
             >
-              <CheckSquare size={20} /> {!sidebarCollapsed && 'Review Requests'}
+              <CheckSquare size={20} /> {!sidebarCollapsed && 'Approvals'}
             </button>
           )}
         </nav>
 
         <div className="sidebar-footer">
-          {isAdmin && !sidebarCollapsed && (
-            <>
-              <button className="btn btn-generate" onClick={() => setShowGenerator(true)}>
-                <PlusCircle size={18} /> Generate New
-              </button>
-
-              {rosterExists && (
-                <button className="btn btn-delete" onClick={() => setShowDeleteConfirm(true)}>
-                  <Trash2 size={18} /> Delete Roster
-                </button>
-              )}
-
-              <button className="btn btn-team-settings" onClick={() => setShowTeamSettings(true)}>
-                <Users size={18} /> Team Settings
-              </button>
-            </>
-          )}
-
-          <button className="btn btn-secondary" onClick={toggleTheme} style={{ justifyContent: 'center' }} title="Toggle theme">
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            {!sidebarCollapsed && (theme === 'dark' ? ' Light Mode' : ' Dark Mode')}
-          </button>
-
-          <button className="btn btn-refresh" onClick={loadRoster} title="Refresh">
-            <RefreshCw size={18} /> {!sidebarCollapsed && 'Refresh'}
-          </button>
-
           {userIsAdminRole && (
             <button
-              className={`btn btn-admin ${isAdmin ? 'active' : ''}`}
+              className={`nav-item ${isAdmin ? 'active' : ''}`}
               onClick={toggleAdminMode}
-              title={isAdmin ? 'Admin Mode: ON' : 'Admin mode'}
+              title={isAdmin ? 'Admin Mode: ON' : 'Admin Mode'}
+              style={{ color: isAdmin ? 'var(--accent-primary)' : 'var(--text-secondary)' }}
             >
-              <Settings size={18} /> {!sidebarCollapsed && (isAdmin ? 'Admin Mode: ON' : 'Admin mode')}
+              <ShieldCheck size={20} /> {!sidebarCollapsed && (isAdmin ? 'Admin: ON' : 'Admin Mode')}
             </button>
           )}
 
-          {userIsAdminRole && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowAdminManager(true)}
-              title="Manage Admins"
-            >
-              <Users size={18} /> {!sidebarCollapsed && 'Manage Admins'}
+          {isAdmin && !sidebarCollapsed && (
+            <button className="nav-item" onClick={() => setShowTeamSettings(true)} style={{ color: 'var(--text-secondary)' }}>
+              <Settings size={20} /> Team Settings
             </button>
           )}
 
-          <button className="btn btn-logout" onClick={onLogout} title="Logout">
-            <LogOut size={18} /> {!sidebarCollapsed && 'Logout'}
+          <button className="nav-item" onClick={onLogout} style={{ color: 'var(--accent-danger)' }}>
+            <LogOut size={20} /> {!sidebarCollapsed && 'Logout'}
           </button>
 
-          {!sidebarCollapsed && userProfile?.name && (
-            <div style={{
-              fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center',
-              padding: '0.5rem 0', borderTop: '1px solid var(--border-color)', marginTop: '0.5rem'
-            }}>
-              Logged in as <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{userProfile.name}</span>
+          {!sidebarCollapsed && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', padding: '0.5rem', background: 'var(--bg-hover)', borderRadius: '8px' }}>
+              <div style={{ width: 32, height: 32, borderRadius: 16, background: 'var(--accent-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
+                {userProfile?.name?.charAt(0) || 'U'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{userProfile?.name || 'User'}</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{isAdmin ? 'Admin' : 'Member'}</span>
+              </div>
             </div>
           )}
         </div>
       </aside>
 
-      {/* Main Content */}
-      {/* Main Content */}
-      <main className="main-content">
-        {view === 'dashboard' && (
-          <Dashboard
-            rosterData={allTeamsData}
-            currentDate={currentDate}
-            onChangeDate={handleDateChange}
-            loading={loading}
-            headerAction={
-              <TeamSelector
-                teams={teams}
-                selectedTeams={selectedTeams}
-                setSelectedTeams={setSelectedTeams}
-              />
-            }
-          />
-        )}
-        {view === 'roster' && (
-          <RosterTable
-            rosterData={rosterData}
-            currentDate={currentDate}
-            onChangeDate={handleDateChange}
-            isAdmin={isAdmin}
-            loading={loading}
-            onCellUpdate={handleCellUpdate}
-            viewMode="all"
-            allTeamsData={allTeamsData}
-            headerAction={
-              <TeamSelector
-                teams={teams}
-                selectedTeams={selectedTeams}
-                setSelectedTeams={setSelectedTeams}
-              />
-            }
-          />
-        )}
-        {view === 'summary' && (
-          <Summary
-            currentDate={currentDate}
-            selectedTeam={selectedTeams.length === 1 ? selectedTeams[0] : ''}
-            viewMode={selectedTeams.length === 1 ? 'single' : 'all'}
-            headerAction={
-              <TeamSelector
-                teams={teams}
-                selectedTeams={selectedTeams}
-                setSelectedTeams={setSelectedTeams}
-              />
-            }
-          />
-        )}
-        {view === 'requests' && (
-          <RequestsPage userProfile={userProfile} />
-        )}
-        {view === 'review' && userIsAdminRole && (
-          <ReviewRequestsPage onRefreshRoster={loadRoster} />
-        )}
-      </main>
+      {/* Main Content Area with Topbar */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+
+        {/* Main Content */}
+        <main className="main-content" style={{ padding: '0', position: 'relative' }}>
+          {view === 'dashboard' && (
+            <Dashboard
+              rosterData={allTeamsData}
+              currentDate={currentDate}
+              onChangeDate={handleDateChange}
+              loading={loading}
+              headerAction={
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <TeamSelector teams={teams} selectedTeams={selectedTeams} setSelectedTeams={setSelectedTeams} />
+                  {isAdmin && (
+                    <button className="btn btn-primary" onClick={() => setShowGenerator(true)}>
+                      <PlusCircle size={16} /> Generate Roster
+                    </button>
+                  )}
+                </div>
+              }
+            />
+          )}
+          {view === 'roster' && (
+            <RosterTable
+              rosterData={rosterData}
+              currentDate={currentDate}
+              onChangeDate={handleDateChange}
+              isAdmin={isAdmin}
+              loading={loading}
+              onCellUpdate={handleCellUpdate}
+              viewMode="all"
+              allTeamsData={allTeamsData}
+              headerAction={
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <TeamSelector teams={teams} selectedTeams={selectedTeams} setSelectedTeams={setSelectedTeams} />
+                  {isAdmin && (
+                    <button className="btn btn-primary" onClick={() => setShowGenerator(true)}>
+                      <PlusCircle size={16} /> Generate
+                    </button>
+                  )}
+                  {isAdmin && rosterExists && (
+                    <button className="btn btn-secondary" style={{ color: 'var(--accent-danger)', borderColor: 'var(--accent-danger)' }} onClick={() => setShowDeleteConfirm(true)}>
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              }
+            />
+          )}
+          {view === 'summary' && (
+            <Summary
+              currentDate={currentDate}
+              selectedTeam={selectedTeams.length === 1 ? selectedTeams[0] : ''}
+              viewMode={selectedTeams.length === 1 ? 'single' : 'all'}
+              headerAction={
+                <TeamSelector teams={teams} selectedTeams={selectedTeams} setSelectedTeams={setSelectedTeams} />
+              }
+            />
+          )}
+          {view === 'requests' && (
+            <RequestsPage userProfile={userProfile} />
+          )}
+          {view === 'review' && userIsAdminRole && (
+            <ReviewRequestsPage onRefreshRoster={loadRoster} />
+          )}
+        </main>
+      </div>
 
       {/* Modals */}
       {showGenerator && (
