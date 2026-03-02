@@ -1910,7 +1910,7 @@ function AuthenticatedApp({ onLogout }) {
           <Summary
             currentDate={currentDate}
             selectedTeam={selectedTeams.length === 1 ? selectedTeams[0] : ''}
-            viewMode={selectedTeams.length <= 1 ? 'single' : 'all'}
+            viewMode={selectedTeams.length === 1 ? 'single' : 'all'}
             headerAction={
               <TeamSelector
                 teams={teams}
