@@ -1975,9 +1975,14 @@ function AuthenticatedApp({ onLogout }) {
           )}
 
           {isAdmin && !sidebarCollapsed && (
-            <button className="nav-item" onClick={() => setShowTeamSettings(true)} style={{ color: 'var(--text-secondary)' }}>
-              <Settings size={20} /> Team Settings
-            </button>
+            <>
+              <button className="nav-item" onClick={() => setShowAdminManager(true)} style={{ color: 'var(--text-secondary)' }}>
+                <Users size={20} /> Manage Admins
+              </button>
+              <button className="nav-item" onClick={() => setShowTeamSettings(true)} style={{ color: 'var(--text-secondary)' }}>
+                <Settings size={20} /> Team Settings
+              </button>
+            </>
           )}
 
           <button className="nav-item" onClick={onLogout} style={{ color: 'var(--accent-danger)' }}>
