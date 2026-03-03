@@ -33,7 +33,8 @@ import {
   LogOut,
   FileText,
   CheckSquare,
-  SunMedium
+  SunMedium,
+  HelpCircle
 } from 'lucide-react';
 import CellEditor from './components/CellEditor';
 import Summary from './components/Summary';
@@ -1331,8 +1332,14 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
                           <tr>
                             <th style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>Member</th>
                             <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'center' }}>Auto Enable</th>
-                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right' }}>Start Buffer (Mins)</th>
-                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right' }}>End Buffer (Mins)</th>
+                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              Start Buffer (Mins)
+                              <HelpCircle size={14} style={{ marginLeft: '4px', verticalAlign: 'text-bottom', cursor: 'help' }} title="Negative = mins BEFORE shift starts. Positive = mins AFTER shift starts. e.g. -15 to enable 15 mins early." />
+                            </th>
+                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              End Buffer (Mins)
+                              <HelpCircle size={14} style={{ marginLeft: '4px', verticalAlign: 'text-bottom', cursor: 'help' }} title="Negative = mins BEFORE shift ends. Positive = mins AFTER shift ends. e.g. -120 to disable 2 hours early." />
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
