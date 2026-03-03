@@ -1325,25 +1325,19 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
 
                 {formMembers.trim() && (
                   <div className="form-group" style={{ marginTop: '1.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Freshdesk Auto-Enablement</label>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.2rem', display: 'block' }}>Freshdesk Auto-Enablement</label>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem', lineHeight: 1.4 }}>
+                      <strong style={{ color: 'var(--text-primary)' }}>Buffer Rules:</strong> Use negative numbers for mins <strong style={{ color: 'var(--accent-danger)' }}>before</strong> the shift, and positive for mins <strong style={{ color: 'var(--accent-success)' }}>after</strong>.<br />
+                      <em>Example: Start <code>-15</code> (enables 15m early). End <code>-120</code> (disables 2h early).</em>
+                    </p>
                     <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                         <thead style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
                           <tr>
                             <th style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>Member</th>
                             <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'center' }}>Auto Enable</th>
-                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              Start Buffer (Mins)
-                              <span title="Negative = mins BEFORE shift starts. Positive = mins AFTER shift starts. e.g. -15 to enable 15 mins early." style={{ cursor: 'help' }}>
-                                <HelpCircle size={14} style={{ marginLeft: '4px', verticalAlign: 'text-bottom' }} />
-                              </span>
-                            </th>
-                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              End Buffer (Mins)
-                              <span title="Negative = mins BEFORE shift ends. Positive = mins AFTER shift ends. e.g. -120 to disable 2 hours early." style={{ cursor: 'help' }}>
-                                <HelpCircle size={14} style={{ marginLeft: '4px', verticalAlign: 'text-bottom' }} />
-                              </span>
-                            </th>
+                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>Start Buffer (Mins)</th>
+                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>End Buffer (Mins)</th>
                           </tr>
                         </thead>
                         <tbody>
