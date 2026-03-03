@@ -1334,11 +1334,15 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
                             <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'center' }}>Auto Enable</th>
                             <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>
                               Start Buffer (Mins)
-                              <HelpCircle size={14} style={{ marginLeft: '4px', verticalAlign: 'text-bottom', cursor: 'help' }} title="Negative = mins BEFORE shift starts. Positive = mins AFTER shift starts. e.g. -15 to enable 15 mins early." />
+                              <span title="Negative = mins BEFORE shift starts. Positive = mins AFTER shift starts. e.g. -15 to enable 15 mins early." style={{ cursor: 'help' }}>
+                                <HelpCircle size={14} style={{ marginLeft: '4px', verticalAlign: 'text-bottom' }} />
+                              </span>
                             </th>
                             <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>
                               End Buffer (Mins)
-                              <HelpCircle size={14} style={{ marginLeft: '4px', verticalAlign: 'text-bottom', cursor: 'help' }} title="Negative = mins BEFORE shift ends. Positive = mins AFTER shift ends. e.g. -120 to disable 2 hours early." />
+                              <span title="Negative = mins BEFORE shift ends. Positive = mins AFTER shift ends. e.g. -120 to disable 2 hours early." style={{ cursor: 'help' }}>
+                                <HelpCircle size={14} style={{ marginLeft: '4px', verticalAlign: 'text-bottom' }} />
+                              </span>
                             </th>
                           </tr>
                         </thead>
