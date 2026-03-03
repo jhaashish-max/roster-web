@@ -1099,7 +1099,7 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
 
       const emailMap = {};
       if (emailsData && Array.isArray(emailsData)) {
-        emailsData.forEach(e => { emailMap[e.name] = e.email; });
+        emailsData.forEach(e => { emailMap[e.name] = e; });
       }
       setMemberEmails(emailMap);
     } catch (err) {
@@ -1136,8 +1136,8 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
 
     // Map existing member emails if available
     const membersWithEmail = team.members.map(name => {
-      const email = memberEmails[name] || '';
-      return email ? `${name}, ${email}` : name;
+      const config = memberEmails[name] || {};
+      return config.email ? `${name}, ${config.email}` : name;
     });
 
     setFormMembers(membersWithEmail.join('\n'));
@@ -1145,6 +1145,16 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
     setShowPromptEditor(!!team.custom_prompt);
     setEditingTeam(team);
     setIsCreating(false);
+  };
+
+  const updateMemberEmailConfig = (name, field, value) => {
+    setMemberEmails(prev => ({
+      ...prev,
+      [name]: {
+        ...(prev[name] || { name, email: '' }),
+        [field]: value
+      }
+    }));
   };
 
   const handleSave = async () => {
@@ -1160,8 +1170,16 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
       const name = parts[0].trim();
       membersArray.push(name);
 
+      const existingConfig = memberEmails[name] || {};
+
       if (parts[1]) {
-        emailUpdates.push({ name, email: parts[1].trim() });
+        emailUpdates.push({
+          name,
+          email: parts[1].trim(),
+          auto_enable_bucket: existingConfig.auto_enable_bucket ?? true,
+          start_offset_mins: existingConfig.start_offset_mins || 0,
+          end_offset_mins: existingConfig.end_offset_mins || 0
+        });
       }
     });
 
@@ -1303,6 +1321,66 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
                     onChange={(e) => setFormMembers(e.target.value)}
                   />
                 </div>
+
+                {formMembers.trim() && (
+                  <div className="form-group" style={{ marginTop: '1.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Freshdesk Auto-Enablement</label>
+                    <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
+                        <thead style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
+                          <tr>
+                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>Member</th>
+                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'center' }}>Auto Enable</th>
+                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right' }}>Start Buffer (Mins)</th>
+                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right' }}>End Buffer (Mins)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formMembers.split('\n').filter(m => m.trim() && m.includes(',')).map(line => {
+                            const name = line.split(',')[0].trim();
+                            const config = memberEmails[name] || {};
+                            const autoEnable = config.auto_enable_bucket ?? true;
+                            const startOffset = config.start_offset_mins || 0;
+                            const endOffset = config.end_offset_mins || 0;
+
+                            return (
+                              <tr key={name} style={{ borderTop: '1px solid var(--border-color)' }}>
+                                <td style={{ padding: '0.75rem 1rem', fontWeight: 500, color: 'var(--text-primary)' }}>{name}</td>
+                                <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    title="Include this agent in the n8n sync"
+                                    checked={autoEnable}
+                                    onChange={(e) => updateMemberEmailConfig(name, 'auto_enable_bucket', e.target.checked)}
+                                    style={{ width: '16px', height: '16px', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                                  <input
+                                    type="number"
+                                    value={startOffset}
+                                    title="Negative = before shift, Positive = after shift starts"
+                                    onChange={(e) => updateMemberEmailConfig(name, 'start_offset_mins', parseInt(e.target.value) || 0)}
+                                    style={{ width: '60px', padding: '0.3rem', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--border-color)', textAlign: 'right', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                                  <input
+                                    type="number"
+                                    value={endOffset}
+                                    title="Negative = before shift ends, Positive = after shift ends"
+                                    onChange={(e) => updateMemberEmailConfig(name, 'end_offset_mins', parseInt(e.target.value) || 0)}
+                                    style={{ width: '60px', padding: '0.3rem', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--border-color)', textAlign: 'right', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 <div className="form-group" style={{ background: 'var(--bg-hover)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', marginTop: '2rem' }}>
                   <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0, cursor: 'pointer' }}>
