@@ -399,3 +399,31 @@ export async function updateTeamEmails(emails) {
     if (!res.ok) throw new Error(data.error);
     return data;
 }
+
+// ==================== SHIFT CONFIGURATIONS FUNCTIONS ====================
+
+export async function getShiftConfigs() {
+    const res = await authFetch('/api/teams/shift-configs');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    return data;
+}
+
+export async function saveShiftConfigs(configs) {
+    const res = await authFetch('/api/teams/shift-configs', {
+        method: 'POST',
+        body: JSON.stringify({ configs })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    return data;
+}
+
+export async function deleteShiftConfig(id) {
+    const res = await authFetch(`/api/teams/shift-configs?id=${id}`, {
+        method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    return data;
+}

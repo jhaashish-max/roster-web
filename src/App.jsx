@@ -41,8 +41,9 @@ import Summary from './components/Summary';
 import CommandPalette from './components/CommandPalette';
 import LoginPage from './components/LoginPage';
 import Logo from './components/Logo';
+import ShiftConfigModal from './components/ShiftConfigModal';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend, isAfter, isBefore, parseISO, startOfDay, isSameDay } from 'date-fns';
-import { fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam, isLoggedIn, getUserEmail, logout as authLogout, handleAuthCallback, checkAdmin, listAdmins, addAdmin, removeAdmin, whoAmI, createLeaveRequest, getMyRequests, getPendingRequests, reviewRequest, bulkUpdateRosterEntries, getTeamEmails, updateTeamEmails } from './lib/api';
+import { fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam, isLoggedIn, getUserEmail, logout as authLogout, handleAuthCallback, checkAdmin, listAdmins, addAdmin, removeAdmin, whoAmI, createLeaveRequest, getMyRequests, getPendingRequests, reviewRequest, bulkUpdateRosterEntries, getTeamEmails, updateTeamEmails, getShiftConfigs, saveShiftConfigs, deleteShiftConfig } from './lib/api';
 
 // N8n Webhook URL - Using Vite proxy to bypass CORS in Dev, Direct URL in Prod
 const IS_DEV = import.meta.env.DEV;
@@ -1134,14 +1135,7 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
 
   const startEdit = (team) => {
     setFormName(team.name);
-
-    // Map existing member emails if available
-    const membersWithEmail = team.members.map(name => {
-      const config = memberEmails[name] || {};
-      return config.email ? `${name}, ${config.email}` : name;
-    });
-
-    setFormMembers(membersWithEmail.join('\n'));
+    setFormMembers(team.members.join('\n'));
     setFormPrompt(team.custom_prompt || '');
     setShowPromptEditor(!!team.custom_prompt);
     setEditingTeam(team);
@@ -1166,24 +1160,6 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
     const membersArray = [];
     const emailUpdates = [];
 
-    formMembers.split('\n').filter(m => m.trim()).forEach(line => {
-      const parts = line.split(',');
-      const name = parts[0].trim();
-      membersArray.push(name);
-
-      const existingConfig = memberEmails[name] || {};
-
-      if (parts[1]) {
-        emailUpdates.push({
-          name,
-          email: parts[1].trim(),
-          auto_enable_bucket: existingConfig.auto_enable_bucket ?? true,
-          start_offset_mins: existingConfig.start_offset_mins || 0,
-          end_offset_mins: existingConfig.end_offset_mins || 0
-        });
-      }
-    });
-
     try {
       if (isCreating) {
         await createTeam(formName, membersArray, formPrompt || null);
@@ -1193,10 +1169,6 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
           members: membersArray,
           custom_prompt: formPrompt || null
         });
-      }
-
-      if (emailUpdates.length > 0) {
-        await updateTeamEmails(emailUpdates);
       }
 
       await loadTeams();
@@ -1323,70 +1295,6 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
                   />
                 </div>
 
-                {formMembers.trim() && (
-                  <div className="form-group" style={{ marginTop: '1.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.2rem', display: 'block' }}>Freshdesk Auto-Enablement</label>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem', lineHeight: 1.4 }}>
-                      <strong style={{ color: 'var(--text-primary)' }}>Buffer Rules:</strong> Use negative numbers for mins <strong style={{ color: 'var(--accent-danger)' }}>before</strong> the shift, and positive for mins <strong style={{ color: 'var(--accent-success)' }}>after</strong>.<br />
-                      <em>Example: Start <code>-15</code> (enables 15m early). End <code>-120</code> (disables 2h early).</em>
-                    </p>
-                    <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
-                        <thead style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
-                          <tr>
-                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>Member</th>
-                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'center' }}>Auto Enable</th>
-                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>Start Buffer (Mins)</th>
-                            <th style={{ padding: '0.75rem 1rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>End Buffer (Mins)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {formMembers.split('\n').filter(m => m.trim() && m.includes(',')).map(line => {
-                            const name = line.split(',')[0].trim();
-                            const config = memberEmails[name] || {};
-                            const autoEnable = config.auto_enable_bucket ?? true;
-                            const startOffset = config.start_offset_mins || 0;
-                            const endOffset = config.end_offset_mins || 0;
-
-                            return (
-                              <tr key={name} style={{ borderTop: '1px solid var(--border-color)' }}>
-                                <td style={{ padding: '0.75rem 1rem', fontWeight: 500, color: 'var(--text-primary)' }}>{name}</td>
-                                <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                                  <input
-                                    type="checkbox"
-                                    title="Include this agent in the n8n sync"
-                                    checked={autoEnable}
-                                    onChange={(e) => updateMemberEmailConfig(name, 'auto_enable_bucket', e.target.checked)}
-                                    style={{ width: '16px', height: '16px', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
-                                  />
-                                </td>
-                                <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-                                  <input
-                                    type="number"
-                                    value={startOffset}
-                                    title="Negative = before shift, Positive = after shift starts"
-                                    onChange={(e) => updateMemberEmailConfig(name, 'start_offset_mins', parseInt(e.target.value) || 0)}
-                                    style={{ width: '60px', padding: '0.3rem', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--border-color)', textAlign: 'right', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                  />
-                                </td>
-                                <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-                                  <input
-                                    type="number"
-                                    value={endOffset}
-                                    title="Negative = before shift ends, Positive = after shift ends"
-                                    onChange={(e) => updateMemberEmailConfig(name, 'end_offset_mins', parseInt(e.target.value) || 0)}
-                                    style={{ width: '60px', padding: '0.3rem', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid var(--border-color)', textAlign: 'right', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                  />
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
                 <div className="form-group" style={{ background: 'var(--bg-hover)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', marginTop: '2rem' }}>
                   <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0, cursor: 'pointer' }}>
                     <input
@@ -1484,6 +1392,309 @@ function App() {
 
   return <AuthenticatedApp onLogout={handleLogout} />;
 }
+
+// ─── AUTO ENABLEMENT PAGE (Admin) ──────────────────────────────────
+const AutoEnablementPage = () => {
+  const [teams, setTeams] = useState([]);
+  const [memberEmails, setMemberEmails] = useState({});
+  const [shiftConfigs, setShiftConfigs] = useState([]);
+  const [rosterData, setRosterData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [teamsData, emailsData, configsData] = await Promise.all([getTeams(), getTeamEmails(), getShiftConfigs()]);
+      setTeams(teamsData);
+      setShiftConfigs(configsData || []);
+
+      const emailMap = {};
+      if (emailsData && Array.isArray(emailsData)) {
+        emailsData.forEach(e => { emailMap[e.name] = e; });
+      }
+      setMemberEmails(emailMap);
+
+      if (!selectedTeamId && teamsData.length > 0) {
+        setSelectedTeamId(teamsData[0].id);
+      }
+    } catch (err) {
+      console.error(err);
+      setToast({ message: 'Failed to load configuration data', type: 'error' });
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!selectedTeamId) return;
+    const selectedTeam = teams.find(t => t.id === selectedTeamId);
+    if (!selectedTeam) return;
+
+    const fetchCurrentRoster = async () => {
+      try {
+        const currentDate = new Date();
+        const data = await fetchRoster(currentDate.getFullYear(), currentDate.getMonth() + 1, selectedTeam.name);
+        const todayStr = format(currentDate, 'yyyy-MM-dd');
+        const todaysRoster = data.filter(r => r.Date === todayStr);
+        setRosterData(todaysRoster);
+      } catch (err) {
+        console.warn('Could not load current roster for team', err);
+      }
+    };
+    fetchCurrentRoster();
+  }, [selectedTeamId, teams]);
+
+  const updateMemberEmailConfig = (name, field, value) => {
+    setMemberEmails(prev => ({
+      ...prev,
+      [name]: {
+        ...(prev[name] || { name, email: '' }),
+        [field]: value
+      }
+    }));
+  };
+
+  const handleSave = async () => {
+    const selectedTeam = teams.find(t => t.id === selectedTeamId);
+    if (!selectedTeam) return;
+
+    setSaving(true);
+    const emailUpdates = [];
+
+    selectedTeam.members.forEach(name => {
+      const config = memberEmails[name] || {};
+      emailUpdates.push({
+        name,
+        email: config.email || null,
+        auto_enable_bucket: config.auto_enable_bucket ?? true,
+        start_offset_mins: config.start_offset_mins !== undefined ? config.start_offset_mins : null,
+        end_offset_mins: config.end_offset_mins !== undefined ? config.end_offset_mins : null,
+        freshdesk_agent_id: config.freshdesk_agent_id || null
+      });
+    });
+
+    try {
+      if (emailUpdates.length > 0) {
+        await updateTeamEmails(emailUpdates);
+        setToast({ message: 'Configuration saved successfully', type: 'success' });
+        await loadData();
+      }
+    } catch (err) {
+      console.error('Save error', err);
+      setToast({ message: 'Error saving configuration', type: 'error' });
+    }
+    setSaving(false);
+  };
+
+  const selectedTeam = teams.find(t => t.id === selectedTeamId);
+
+  return (
+    <div className="view-container">
+      <div className="view-header">
+        <h2><Clock size={20} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Auto Bucket Management</h2>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="btn btn-secondary" onClick={() => setShowConfigModal(true)} disabled={loading || !selectedTeam}>
+            <Settings size={16} /> Shift Configurations
+          </button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving || !selectedTeam}>
+            {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />} Save Configurations
+          </button>
+        </div>
+      </div>
+
+      {showConfigModal && (
+        <ShiftConfigModal
+          team={selectedTeam}
+          onClose={() => setShowConfigModal(false)}
+          configs={shiftConfigs}
+          onConfigsUpdated={loadData}
+        />
+      )}
+
+      {toast && (
+        <div className={`toast toast-${toast.type}`} style={{ margin: '0 0 1.5rem' }}>
+          {toast.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+          {toast.message}
+          <button onClick={() => setToast(null)}><X size={12} /></button>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem' }}><Loader2 size={24} className="spin" /></div>
+      ) : teams.length === 0 ? (
+        <div style={{ background: 'var(--bg-card)', borderRadius: '12px', padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <AlertCircle size={32} style={{ marginBottom: '0.75rem', opacity: 0.5 }} />
+          <p>No teams available. Create a team first.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Select Team to Configure</label>
+            <select
+              value={selectedTeamId}
+              onChange={(e) => setSelectedTeamId(e.target.value)}
+              className="form-input"
+              style={{ maxWidth: '300px' }}
+            >
+              {teams.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {selectedTeam && (
+            <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+              <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, margin: 0, color: 'var(--text-primary)' }}>{selectedTeam.name} Configuration</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem', lineHeight: 1.5 }}>
+                  <strong style={{ color: 'var(--text-primary)' }}>Buffer Rules:</strong> Use negative numbers for mins <strong style={{ color: 'var(--accent-danger)' }}>before</strong> the shift, and positive for mins <strong style={{ color: 'var(--accent-success)' }}>after</strong>.<br />
+                  Make sure every assigned agent has their correct Freshdesk <strong>Email</strong> set here so N8n can map their agent ID!
+                </p>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                  <thead style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
+                    <tr>
+                      <th style={{ padding: '1rem', fontWeight: 600 }}>Member Name</th>
+                      <th style={{ padding: '1rem', fontWeight: 600 }}>Freshdesk Email</th>
+                      <th style={{ padding: '1rem', fontWeight: 600, textAlign: 'center' }}>Agent ID Cache</th>
+                      <th style={{ padding: '1rem', fontWeight: 600, textAlign: 'center' }}>Auto Enable</th>
+                      <th style={{ padding: '1rem', fontWeight: 600, textAlign: 'center', whiteSpace: 'nowrap' }}>Start Buffer (M)</th>
+                      <th style={{ padding: '1rem', fontWeight: 600, textAlign: 'center', whiteSpace: 'nowrap' }}>End Buffer (M)</th>
+                      <th style={{ padding: '1rem', width: '40px' }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedTeam.members.map(name => {
+                      const config = memberEmails[name] || {};
+                      const autoEnable = config.auto_enable_bucket ?? true;
+                      const email = config.email || '';
+
+                      // Today's shift resolution
+                      const todayEntry = rosterData.find(r => r.Name === name);
+                      const todaysShift = todayEntry ? todayEntry.Status : null;
+                      const defaultConf = shiftConfigs.find(c => c.team_id === selectedTeamId && c.shift_name === todaysShift);
+
+                      const hasStartOverride = config.start_offset_mins !== null && config.start_offset_mins !== undefined;
+                      const hasEndOverride = config.end_offset_mins !== null && config.end_offset_mins !== undefined;
+
+                      const effStart = hasStartOverride ? config.start_offset_mins : (defaultConf ? defaultConf.start_offset_mins : 0);
+                      const effEnd = hasEndOverride ? config.end_offset_mins : (defaultConf ? defaultConf.end_offset_mins : 0);
+
+                      return (
+                        <tr key={name} style={{ borderTop: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-primary)' }}>{name}</td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            <input
+                              type="email"
+                              value={email}
+                              placeholder="agent@razorpay.com"
+                              onChange={(e) => updateMemberEmailConfig(name, 'email', e.target.value)}
+                              className="form-input"
+                              style={{ width: '100%', minWidth: '200px', padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                            />
+                          </td>
+                          <td style={{ padding: '1rem', textAlign: 'center', color: config.freshdesk_agent_id ? 'var(--accent-success)' : 'var(--text-muted)' }}>
+                            {config.freshdesk_agent_id ? (
+                              <span title={`Cached ID: ${config.freshdesk_agent_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#16a34a15', padding: '2px 6px', borderRadius: '4px', fontWeight: 600, fontSize: '0.75rem' }}>
+                                <CheckCircle size={12} /> Bound
+                              </span>
+                            ) : '-'}
+                          </td>
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={autoEnable}
+                              onChange={(e) => updateMemberEmailConfig(name, 'auto_enable_bucket', e.target.checked)}
+                              style={{ width: '16px', height: '16px', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={hasStartOverride ? config.start_offset_mins : ''}
+                                placeholder="Default"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '' || val === '-') {
+                                    updateMemberEmailConfig(name, 'start_offset_mins', null);
+                                  } else {
+                                    const parsed = parseInt(val);
+                                    if (!isNaN(parsed)) updateMemberEmailConfig(name, 'start_offset_mins', parsed);
+                                  }
+                                }}
+                                style={{
+                                  width: '65px', padding: '0.4rem', fontSize: '0.85rem', borderRadius: '6px',
+                                  border: '1px solid var(--border-color)', textAlign: 'center',
+                                  background: hasStartOverride ? 'var(--bg-primary)' : 'var(--bg-hover)',
+                                  color: hasStartOverride ? 'var(--text-primary)' : 'var(--text-muted)'
+                                }}
+                                title={hasStartOverride ? "Overridden" : `Default: ${effStart} mins (Shift: ${todaysShift || 'None'})`}
+                              />
+                            </div>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={hasEndOverride ? config.end_offset_mins : ''}
+                                placeholder="Default"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '' || val === '-') {
+                                    updateMemberEmailConfig(name, 'end_offset_mins', null);
+                                  } else {
+                                    const parsed = parseInt(val);
+                                    if (!isNaN(parsed)) updateMemberEmailConfig(name, 'end_offset_mins', parsed);
+                                  }
+                                }}
+                                style={{
+                                  width: '65px', padding: '0.4rem', fontSize: '0.85rem', borderRadius: '6px',
+                                  border: '1px solid var(--border-color)', textAlign: 'center',
+                                  background: hasEndOverride ? 'var(--bg-primary)' : 'var(--bg-hover)',
+                                  color: hasEndOverride ? 'var(--text-primary)' : 'var(--text-muted)'
+                                }}
+                                title={hasEndOverride ? "Overridden" : `Default: ${effEnd} mins (Shift: ${todaysShift || 'None'})`}
+                              />
+                            </div>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                            {(hasStartOverride || hasEndOverride) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateMemberEmailConfig(name, 'start_offset_mins', null);
+                                  updateMemberEmailConfig(name, 'end_offset_mins', null);
+                                }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', display: 'flex' }}
+                                title="Reset to Shift Default"
+                              >
+                                <RefreshCw size={14} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ─── REQUESTS PAGE ───────────────────────────────────────────────
 const RequestsPage = ({ userProfile }) => {
@@ -1651,8 +1862,9 @@ const RequestsPage = ({ userProfile }) => {
             </div>
           )}
         </>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 };
 
@@ -2043,6 +2255,15 @@ function AuthenticatedApp({ onLogout }) {
               <CheckSquare size={20} /> {!sidebarCollapsed && 'Approvals'}
             </button>
           )}
+          {isAdmin && (
+            <button
+              className={`nav-item ${view === 'auto-enablement' ? 'active' : ''}`}
+              onClick={() => setView('auto-enablement')}
+              title="Auto Bucket Management"
+            >
+              <Clock size={20} /> {!sidebarCollapsed && 'Auto Bucket Management'}
+            </button>
+          )}
         </nav>
 
         <div className="sidebar-footer">
@@ -2151,6 +2372,9 @@ function AuthenticatedApp({ onLogout }) {
           )}
           {view === 'review' && userIsAdminRole && (
             <ReviewRequestsPage onRefreshRoster={loadRoster} />
+          )}
+          {view === 'auto-enablement' && isAdmin && (
+            <AutoEnablementPage />
           )}
         </main>
       </div>
