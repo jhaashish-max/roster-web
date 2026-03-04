@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Calendar,
   Users,
@@ -6,6 +6,7 @@ import {
   PlusCircle,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   LayoutGrid,
   Menu,
   Shield,
@@ -1135,7 +1136,11 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
 
   const startEdit = (team) => {
     setFormName(team.name);
-    setFormMembers(team.members.join('\n'));
+    const membersWithEmails = team.members.map(name => {
+      const emailObj = memberEmails[name];
+      return emailObj && emailObj.email ? `${name}, ${emailObj.email}` : name;
+    });
+    setFormMembers(membersWithEmails.join('\n'));
     setFormPrompt(team.custom_prompt || '');
     setShowPromptEditor(!!team.custom_prompt);
     setEditingTeam(team);
@@ -1160,6 +1165,22 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
     const membersArray = [];
     const emailUpdates = [];
 
+    formMembers.split('\n').forEach(line => {
+      const parts = line.split(',');
+      if (parts.length > 0) {
+        const name = parts[0].trim();
+        if (name) {
+          membersArray.push(name);
+          if (parts.length > 1) {
+            const email = parts[1].trim();
+            if (email) {
+              emailUpdates.push({ name, email });
+            }
+          }
+        }
+      }
+    });
+
     try {
       if (isCreating) {
         await createTeam(formName, membersArray, formPrompt || null);
@@ -1169,6 +1190,10 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
           members: membersArray,
           custom_prompt: formPrompt || null
         });
+      }
+
+      if (emailUpdates.length > 0) {
+        await updateTeamEmails(emailUpdates);
       }
 
       await loadTeams();
@@ -1189,25 +1214,32 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content modal-large" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '85vh', maxHeight: '800px' }}>
-        <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
-          <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-              <Settings size={20} className="modal-icon" />
-              Team Settings
-            </h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>Manage teams, members, and custom AI prompts</p>
-          </div>
-          <button className="modal-close" onClick={onClose} style={{ background: 'var(--bg-hover)', borderRadius: '8px', padding: '0.5rem' }}>
-            <X size={18} style={{ color: 'var(--text-secondary)' }} />
-          </button>
+    <div className="view-container flex flex-col h-full bg-[var(--bg-primary)]" style={{ padding: '0', background: 'var(--bg-secondary)' }}>
+      <div className="view-header shadow-sm z-10 sticky top-0 bg-[var(--bg-primary)] border-b border-[var(--border-color)]" style={{ padding: '1.5rem 2rem', marginBottom: 0 }}>
+        <div>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>
+            <Settings size={28} style={{ color: 'var(--accent-primary)' }} />
+            Team Settings
+          </h2>
+          <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)' }}>Manage teams, members, tracking emails, and custom AI prompts</p>
         </div>
+      </div>
 
-        <div className="team-settings-layout" style={{ flex: 1, overflow: 'hidden' }}>
-          {/* Teams List */}
-          <div className="teams-list" style={{ borderRight: '1px solid var(--border-color)', background: 'var(--bg-secondary)', padding: '1rem', overflowY: 'auto' }}>
-            <div className="teams-list-header" style={{ marginBottom: '1rem' }}>
+      <div className="flex-1 overflow-auto p-8" style={{ padding: '2rem' }}>
+        <div style={{ display: 'flex', gap: '2rem', height: '100%', maxWidth: '1400px', margin: '0 auto' }}>
+          {/* Teams List Card */}
+          <div className="teams-list" style={{
+            width: '320px',
+            minWidth: '320px',
+            background: 'var(--bg-card)',
+            borderRadius: '12px',
+            border: '1px solid var(--border-color)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            <div className="teams-list-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)' }}>
               <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Teams</h3>
               <button className="btn btn-primary" onClick={startCreate} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
                 <Plus size={14} /> New
@@ -1259,106 +1291,117 @@ const TeamSettings = ({ onClose, onTeamsChange }) => {
             )}
           </div>
 
-          {/* Team Form */}
-          <div className="team-form" style={{ padding: '1.5rem', overflowY: 'auto', background: 'var(--bg-card)' }}>
-            {(isCreating || editingTeam) ? (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>{isCreating ? 'Create New Team' : 'Edit Team'}</h3>
-                  {editingTeam && (
-                    <button className="btn btn-secondary" onClick={() => handleDelete(editingTeam.id)} style={{ color: 'var(--accent-danger)', borderColor: 'var(--accent-danger)', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
-                      <Trash2 size={14} /> Delete Team
-                    </button>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'block' }}>Team Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Enterprise-VAS"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.2rem', display: 'block' }}>Team Members</label>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Format: Name, Email (one per line)</p>
-                  <textarea
-                    rows={8}
-                    className="form-textarea"
-                    placeholder="John Doe, john@razorpay.com&#10;Jane Smith, jane@razorpay.com&#10;..."
-                    value={formMembers}
-                    onChange={(e) => setFormMembers(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group" style={{ background: 'var(--bg-hover)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', marginTop: '2rem' }}>
-                  <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={showPromptEditor}
-                      onChange={(e) => handleShowPromptChange(e.target.checked)}
-                      style={{ width: '16px', height: '16px', accentColor: 'var(--accent-primary)' }}
-                    />
-                    <div>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>Use Custom AI Prompt</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Override the default AI instructions for this specific team</span>
-                    </div>
-                  </label>
-                </div>
-
-                {showPromptEditor && (
-                  <div className={`form-group ${isPromptFullscreen ? 'prompt-fullscreen-container' : ''}`} style={{ marginTop: '1rem' }}>
-                    <div className="prompt-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Custom Prompt Configuration</label>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => setIsPromptFullscreen(!isPromptFullscreen)}
-                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                      >
-                        {isPromptFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                        {isPromptFullscreen ? ' Exit Fullscreen' : ' Fullscreen'}
+          {/* Team Form Card */}
+          <div className="team-form" style={{
+            flex: 1,
+            background: 'var(--bg-card)',
+            borderRadius: '12px',
+            border: '1px solid var(--border-color)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            <div style={{ padding: '2rem', overflowY: 'auto', flex: 1 }}>
+              {(isCreating || editingTeam) ? (
+                <div style={{ maxWidth: '800px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>{isCreating ? 'Create New Team' : 'Edit Team'}</h3>
+                    {editingTeam && (
+                      <button className="btn btn-secondary" onClick={() => handleDelete(editingTeam.id)} style={{ color: 'var(--accent-danger)', borderColor: 'var(--accent-danger)', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                        <Trash2 size={14} /> Delete Team
                       </button>
-                    </div>
-                    <p className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', background: 'var(--bg-secondary)', padding: '0.75rem', borderRadius: '6px', fontFamily: 'JetBrains Mono' }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Available Variables:</span> {'{{TEAM_NAME}}'}, {'{{MONTH_NAME}}'}, {'{{YEAR}}'}, {'{{TEAM_MEMBERS}}'}, {'{{SLACK_REQUESTS}}'}, {'{{START_DATE}}'}, {'{{END_DATE}}'}, {'{{MONTH_PADDED}}'}, {'{{PREVIOUS_MONTH_DATA}}'}
-                    </p>
-                    <textarea
-                      rows={isPromptFullscreen ? 30 : 12}
-                      placeholder="Enter custom AI prompt instructions here..."
-                      value={formPrompt}
-                      onChange={(e) => setFormPrompt(e.target.value)}
-                      className="form-textarea"
-                      style={{ fontFamily: 'JetBrains Mono', fontSize: '0.85rem', lineHeight: 1.5 }}
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'block' }}>Team Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Enterprise-VAS"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="form-input"
                     />
                   </div>
-                )}
 
-                <div className="form-actions" style={{ display: 'flex', gap: '1rem', marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)', justifyContent: 'flex-end' }}>
-                  <button className="btn btn-secondary" onClick={resetForm} disabled={saving}>
-                    Cancel
-                  </button>
-                  <button className="btn btn-primary" onClick={handleSave} disabled={saving || !formName.trim() || !formMembers.trim()}>
-                    {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
-                    {saving ? 'Saving...' : 'Save Team Configuration'}
-                  </button>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.2rem', display: 'block' }}>Team Members</label>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Format: Name, Email (one per line)</p>
+                    <textarea
+                      rows={8}
+                      className="form-textarea"
+                      placeholder="John Doe, john@razorpay.com&#10;Jane Smith, jane@razorpay.com&#10;..."
+                      value={formMembers}
+                      onChange={(e) => setFormMembers(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ background: 'var(--bg-hover)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', marginTop: '2rem' }}>
+                    <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={showPromptEditor}
+                        onChange={(e) => handleShowPromptChange(e.target.checked)}
+                        style={{ width: '16px', height: '16px', accentColor: 'var(--accent-primary)' }}
+                      />
+                      <div>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>Use Custom AI Prompt</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Override the default AI instructions for this specific team</span>
+                      </div>
+                    </label>
+                  </div>
+
+                  {showPromptEditor && (
+                    <div className={`form-group ${isPromptFullscreen ? 'prompt-fullscreen-container' : ''}`} style={{ marginTop: '1rem' }}>
+                      <div className="prompt-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Custom Prompt Configuration</label>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => setIsPromptFullscreen(!isPromptFullscreen)}
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                        >
+                          {isPromptFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                          {isPromptFullscreen ? ' Exit Fullscreen' : ' Fullscreen'}
+                        </button>
+                      </div>
+                      <p className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', background: 'var(--bg-secondary)', padding: '0.75rem', borderRadius: '6px', fontFamily: 'JetBrains Mono' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Available Variables:</span> {'{{TEAM_NAME}}'}, {'{{MONTH_NAME}}'}, {'{{YEAR}}'}, {'{{TEAM_MEMBERS}}'}, {'{{SLACK_REQUESTS}}'}, {'{{START_DATE}}'}, {'{{END_DATE}}'}, {'{{MONTH_PADDED}}'}, {'{{PREVIOUS_MONTH_DATA}}'}
+                      </p>
+                      <textarea
+                        rows={isPromptFullscreen ? 30 : 12}
+                        placeholder="Enter custom AI prompt instructions here..."
+                        value={formPrompt}
+                        onChange={(e) => setFormPrompt(e.target.value)}
+                        className="form-textarea"
+                        style={{ fontFamily: 'JetBrains Mono', fontSize: '0.85rem', lineHeight: 1.5 }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="form-actions" style={{ display: 'flex', gap: '1rem', marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-secondary" onClick={resetForm} disabled={saving}>
+                      Cancel
+                    </button>
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving || !formName.trim() || !formMembers.trim()} style={{ padding: '0.6rem 1.5rem' }}>
+                      {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
+                      {saving ? 'Saving...' : 'Save Team Configuration'}
+                    </button>
+                  </div>
                 </div>
-              </>
-            ) : (
-              <div className="team-form-empty" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                <Users size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Team Management</h3>
-                <p style={{ fontSize: '0.85rem' }}>Select a team from the list to edit, or click 'New' to create one.</p>
-              </div>
-            )}
+              ) : (
+                <div className="team-form-empty" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                  <Users size={64} style={{ marginBottom: '1.5rem', opacity: 0.2 }} />
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Team Management</h3>
+                  <p style={{ fontSize: '0.9rem', maxWidth: '300px', textAlign: 'center', lineHeight: 1.5 }}>Select a team from the list on the left to edit its configuration, members, and AI prompts, or click 'New' to create one.</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </div >
+      </div >
+    </div >
   );
 };
 
@@ -1404,8 +1447,20 @@ const AutoEnablementPage = () => {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => { document.removeEventListener('mousedown', handleClickOutside); };
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -1491,13 +1546,122 @@ const AutoEnablementPage = () => {
     setSaving(false);
   };
 
+  const handleDeleteMember = async (memberName) => {
+    if (!window.confirm(`Are you sure you want to remove ${memberName} from this team?`)) return;
+
+    const selectedTeam = teams.find(t => t.id === selectedTeamId);
+    if (!selectedTeam) return;
+
+    try {
+      const updatedMembers = selectedTeam.members.filter(m => m !== memberName);
+      await updateTeam(selectedTeam.id, {
+        name: selectedTeam.name,
+        members: updatedMembers,
+        custom_prompt: selectedTeam.custom_prompt || null
+      });
+      setToast({ message: `${memberName} removed from team successfully`, type: 'success' });
+      await loadData();
+    } catch (err) {
+      console.error('Failed to remove member', err);
+      setToast({ message: 'Failed to remove member. Ensure server is running.', type: 'error' });
+    }
+  };
+
   const selectedTeam = teams.find(t => t.id === selectedTeamId);
 
   return (
     <div className="view-container">
-      <div className="view-header">
-        <h2><Clock size={20} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Auto Bucket Management</h2>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+      <div className="view-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <h2 style={{ margin: 0 }}><Clock size={20} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Auto Bucket Management</h2>
+          <div style={{ paddingLeft: '1.25rem', borderLeft: '1px solid var(--border-color)', position: 'relative' }}>
+            <div
+              ref={dropdownRef}
+              className="custom-dropdown"
+              style={{ position: 'relative', minWidth: '180px' }}
+            >
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="btn btn-secondary"
+                style={{
+                  width: '100%',
+                  padding: '0.45rem 1rem',
+                  fontSize: '0.92rem',
+                  fontWeight: 600,
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  boxShadow: 'var(--shadow-sm)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  textAlign: 'left'
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  {selectedTeam ? selectedTeam.name : 'Select Team'}
+                </span>
+                <ChevronDown size={14} style={{ color: 'var(--text-muted)', transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', flexShrink: 0 }} />
+              </button>
+
+              {dropdownOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  left: 0,
+                  width: '100%',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  zIndex: 50,
+                  overflow: 'hidden',
+                  maxHeight: '300px',
+                  overflowY: 'auto'
+                }}>
+                  {teams.length === 0 ? (
+                    <div style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No teams available</div>
+                  ) : (
+                    teams.map(t => (
+                      <div
+                        key={t.id}
+                        onClick={() => {
+                          setSelectedTeamId(t.id);
+                          setDropdownOpen(false);
+                        }}
+                        style={{
+                          padding: '0.75rem 1rem',
+                          fontSize: '0.92rem',
+                          fontWeight: selectedTeamId === t.id ? 600 : 400,
+                          color: selectedTeamId === t.id ? 'var(--accent-primary)' : 'var(--text-primary)',
+                          background: selectedTeamId === t.id ? 'var(--bg-hover)' : 'transparent',
+                          cursor: 'pointer',
+                          transition: 'background 0.15s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (selectedTeamId !== t.id) e.currentTarget.style.background = 'var(--bg-secondary)';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (selectedTeamId !== t.id) e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        {t.name}
+                        {selectedTeamId === t.id && <CheckCircle size={14} style={{ color: 'var(--accent-primary)' }} />}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <button className="btn btn-secondary" onClick={() => setShowConfigModal(true)} disabled={loading || !selectedTeam}>
             <Settings size={16} /> Shift Configurations
           </button>
@@ -1533,20 +1697,6 @@ const AutoEnablementPage = () => {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Select Team to Configure</label>
-            <select
-              value={selectedTeamId}
-              onChange={(e) => setSelectedTeamId(e.target.value)}
-              className="form-input"
-              style={{ maxWidth: '300px' }}
-            >
-              {teams.map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-          </div>
-
           {selectedTeam && (
             <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
               <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
@@ -1668,19 +1818,31 @@ const AutoEnablementPage = () => {
                             </div>
                           </td>
                           <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                            {(hasStartOverride || hasEndOverride) && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                              {(hasStartOverride || hasEndOverride) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    updateMemberEmailConfig(name, 'start_offset_mins', null);
+                                    updateMemberEmailConfig(name, 'end_offset_mins', null);
+                                  }}
+                                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', display: 'flex' }}
+                                  title="Reset to Shift Default"
+                                >
+                                  <RefreshCw size={14} />
+                                </button>
+                              )}
                               <button
                                 type="button"
-                                onClick={() => {
-                                  updateMemberEmailConfig(name, 'start_offset_mins', null);
-                                  updateMemberEmailConfig(name, 'end_offset_mins', null);
-                                }}
-                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', display: 'flex' }}
-                                title="Reset to Shift Default"
+                                onClick={() => handleDeleteMember(name)}
+                                style={{ background: 'none', border: 'none', color: 'var(--accent-danger)', opacity: 0.6, cursor: 'pointer', padding: '4px', display: 'flex', transition: 'opacity 0.2s' }}
+                                onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                                onMouseLeave={(e) => e.currentTarget.style.opacity = 0.6}
+                                title="Remove User from Team"
                               >
-                                <RefreshCw size={14} />
+                                <UserX size={15} />
                               </button>
-                            )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1975,7 +2137,6 @@ function AuthenticatedApp({ onLogout }) {
   const [userProfile, setUserProfile] = useState(null);
   const [showGenerator, setShowGenerator] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showTeamSettings, setShowTeamSettings] = useState(false);
   const [showAdminManager, setShowAdminManager] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -2206,8 +2367,8 @@ function AuthenticatedApp({ onLogout }) {
 
       {/* Sidebar - Clean SaaS style */}
       <aside className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', paddingLeft: sidebarCollapsed ? '0' : '16px', paddingTop: '8px' }}>
-          <Logo collapsed={sidebarCollapsed} height="36px" />
+        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', paddingLeft: sidebarCollapsed ? '0' : '16px', paddingTop: '16px', marginBottom: '8px' }}>
+          <Logo collapsed={sidebarCollapsed} height="42px" />
         </div>
 
         <button className="sidebar-toggle" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand' : 'Collapse'}>
@@ -2259,9 +2420,9 @@ function AuthenticatedApp({ onLogout }) {
             <button
               className={`nav-item ${view === 'auto-enablement' ? 'active' : ''}`}
               onClick={() => setView('auto-enablement')}
-              title="Auto Bucket Management"
+              title="Auto Bucket Mgmt"
             >
-              <Clock size={20} /> {!sidebarCollapsed && 'Auto Bucket Management'}
+              <Clock size={20} /> {!sidebarCollapsed && 'Auto Bucket Mgmt'}
             </button>
           )}
         </nav>
@@ -2283,7 +2444,11 @@ function AuthenticatedApp({ onLogout }) {
               <button className="nav-item" onClick={() => setShowAdminManager(true)} style={{ color: 'var(--text-secondary)' }}>
                 <Users size={20} /> Manage Admins
               </button>
-              <button className="nav-item" onClick={() => setShowTeamSettings(true)} style={{ color: 'var(--text-secondary)' }}>
+              <button
+                className={`nav-item ${view === 'team-settings' ? 'active' : ''}`}
+                onClick={() => setView('team-settings')}
+                style={view !== 'team-settings' ? { color: 'var(--text-secondary)' } : {}}
+              >
                 <Settings size={20} /> Team Settings
               </button>
             </>
@@ -2376,6 +2541,9 @@ function AuthenticatedApp({ onLogout }) {
           {view === 'auto-enablement' && isAdmin && (
             <AutoEnablementPage />
           )}
+          {view === 'team-settings' && isAdmin && (
+            <TeamSettings onTeamsChange={loadTeams} />
+          )}
         </main>
       </div>
 
@@ -2397,12 +2565,6 @@ function AuthenticatedApp({ onLogout }) {
           teams={teams}
           selectedTeam={selectedTeam}
           onTeamChange={setSelectedTeam}
-        />
-      )}
-      {showTeamSettings && (
-        <TeamSettings
-          onClose={() => setShowTeamSettings(false)}
-          onTeamsChange={loadTeams}
         />
       )}
 
