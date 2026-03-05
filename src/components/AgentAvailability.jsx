@@ -46,12 +46,10 @@ const AgentAvailability = ({ email, isAutoEnableOn, onShowToast }) => {
         setStatus('toggling');
 
         try {
-            // Dynamically point to Razorpay's n8n cluster based on environment or fallback to production
-            const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_URL
-                ? `${import.meta.env.VITE_N8N_URL}/webhook/freshdesk-availability-toggle`
-                : "https://n8n-conc.razorpay.com/webhook/freshdesk-availability-toggle";
+            const API_BASE = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+            const TOGGLE_URL = `${API_BASE}/api/freshdesk/availability/toggle`;
 
-            const response = await fetch(N8N_WEBHOOK_URL, {
+            const response = await fetch(TOGGLE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, action })
@@ -59,7 +57,7 @@ const AgentAvailability = ({ email, isAutoEnableOn, onShowToast }) => {
 
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.error || `N8n responded with ${response.status}`);
+                throw new Error(errData.error || `Server responded with ${response.status}`);
             }
 
             // Immediately switch local state to feel fast and responsive
