@@ -280,7 +280,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
     };
   }, [todayData]);
 
-  const onLeave = todayData.filter(d => ['PL', 'SL', 'WO', 'WFH'].includes(d.Status));
+  const onLeave = todayData.filter(d => ['PL', 'SL', 'WO', 'WFH', 'WL'].includes(d.Status));
   const workingAgents = todayData.filter(d => d.Status.includes(':'));
 
   const upcomingLeaves = useMemo(() => {
