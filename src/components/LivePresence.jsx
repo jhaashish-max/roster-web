@@ -21,6 +21,8 @@ const getAvatarColor = (name) => {
 
 const LivePresence = ({ currentUser }) => {
     const [activeUsers, setActiveUsers] = useState([]);
+    const [showAllUsers, setShowAllUsers] = useState(false);
+    const [clickedUser, setClickedUser] = useState(null);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -92,11 +94,19 @@ const LivePresence = ({ currentUser }) => {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '0.5rem', borderLeft: '1px solid var(--border-color)' }}>
-                <div style={{ display: 'flex', flexDirection: 'row-reverse', paddingRight: '0.25rem' }}>
-                    {activeUsers.slice(0, 4).reverse().map((user, i) => (
+                <div
+                    style={{ display: 'flex', flexDirection: 'row', paddingRight: '0.25rem', position: 'relative' }}
+                    onMouseLeave={() => { setShowAllUsers(false); setClickedUser(null); }}
+                >
+                    {activeUsers.slice(0, 4).map((user, i) => (
                         <div
                             key={user.id}
                             title={user.name}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setClickedUser(clickedUser === user.id ? null : user.id);
+                                setShowAllUsers(false);
+                            }}
                             style={{
                                 width: '28px',
                                 height: '28px',
@@ -110,19 +120,46 @@ const LivePresence = ({ currentUser }) => {
                                 fontWeight: 600,
                                 border: '2px solid var(--bg-secondary)',
                                 marginLeft: i > 0 ? '-10px' : '0',
-                                zIndex: i,
+                                zIndex: 10 - i,
                                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                                 transition: 'transform 0.2s',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                position: 'relative'
                             }}
                             onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
                             onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                         >
                             {user.name.charAt(0).toUpperCase()}
+
+                            {clickedUser === user.id && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    marginTop: '0.4rem',
+                                    background: 'var(--bg-card)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '8px',
+                                    padding: '0.4rem 0.6rem',
+                                    boxShadow: 'var(--shadow-md)',
+                                    zIndex: 100,
+                                    whiteSpace: 'nowrap',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500,
+                                    animation: 'fadeIn 0.2s ease-out',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem'
+                                }}>
+                                    <div style={{ width: '6px', height: '6px', background: 'var(--accent-success)', borderRadius: '50%' }} />
+                                    {user.name}
+                                </div>
+                            )}
                         </div>
                     ))}
                     {activeUsers.length > 4 && (
                         <div
+                            onClick={() => { setShowAllUsers(!showAllUsers); setClickedUser(null); }}
                             style={{
                                 width: '28px',
                                 height: '28px',
@@ -136,10 +173,49 @@ const LivePresence = ({ currentUser }) => {
                                 fontWeight: 600,
                                 border: '2px solid var(--bg-secondary)',
                                 marginLeft: '-10px',
-                                zIndex: 0
+                                zIndex: 0,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
                             }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-card)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.transform = 'translateY(0)' }}
                         >
                             +{activeUsers.length - 4}
+                        </div>
+                    )}
+
+                    {/* Popover for extra users */}
+                    {showAllUsers && activeUsers.length > 4 && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            marginTop: '0.4rem',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '8px',
+                            padding: '0.5rem',
+                            boxShadow: 'var(--shadow-md)',
+                            zIndex: 100,
+                            minWidth: '160px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem',
+                            animation: 'fadeIn 0.2s ease-out'
+                        }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '0.3rem', borderBottom: '1px solid var(--border-color)' }}>
+                                Online Users
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '200px', overflowY: 'auto' }}>
+                                {activeUsers.slice(4).map(u => (
+                                    <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: getAvatarColor(u.name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 600 }}>
+                                            {u.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <span style={{ fontWeight: 500 }}>{u.name}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -147,10 +223,14 @@ const LivePresence = ({ currentUser }) => {
 
             <style>{`
 @keyframes ping {
-    75 %, 100 % {
+    75%, 100% {
         transform: scale(2.5);
         opacity: 0;
     }
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 `}</style>
         </div>
