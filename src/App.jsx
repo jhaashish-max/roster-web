@@ -44,6 +44,7 @@ import LoginPage from './components/LoginPage';
 import Logo from './components/Logo';
 import ShiftConfigModal from './components/ShiftConfigModal';
 import LivePresence from './components/LivePresence';
+import AgentAvailability from './components/AgentAvailability';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend, isAfter, isBefore, parseISO, startOfDay, isSameDay } from 'date-fns';
 import { fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam, isLoggedIn, getUserEmail, logout as authLogout, handleAuthCallback, checkAdmin, listAdmins, addAdmin, removeAdmin, whoAmI, createLeaveRequest, getMyRequests, getPendingRequests, reviewRequest, bulkUpdateRosterEntries, getTeamEmails, updateTeamEmails, getShiftConfigs, saveShiftConfigs, deleteShiftConfig } from './lib/api';
 
@@ -1715,7 +1716,7 @@ const AutoEnablementPage = () => {
                     <tr>
                       <th style={{ padding: '1rem', fontWeight: 600 }}>Member Name</th>
                       <th style={{ padding: '1rem', fontWeight: 600 }}>Freshdesk Email</th>
-                      <th style={{ padding: '1rem', fontWeight: 600, textAlign: 'center' }}>Agent ID Cache</th>
+                      <th style={{ padding: '1rem', fontWeight: 600, textAlign: 'center' }}>Agent Availability</th>
                       <th style={{ padding: '1rem', fontWeight: 600, textAlign: 'center' }}>Auto Enable</th>
                       <th style={{ padding: '1rem', fontWeight: 600, textAlign: 'center', whiteSpace: 'nowrap' }}>Start Buffer (M)</th>
                       <th style={{ padding: '1rem', fontWeight: 600, textAlign: 'center', whiteSpace: 'nowrap' }}>End Buffer (M)</th>
@@ -1752,12 +1753,8 @@ const AutoEnablementPage = () => {
                               style={{ width: '100%', minWidth: '200px', padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
                             />
                           </td>
-                          <td style={{ padding: '1rem', textAlign: 'center', color: config.freshdesk_agent_id ? 'var(--accent-success)' : 'var(--text-muted)' }}>
-                            {config.freshdesk_agent_id ? (
-                              <span title={`Cached ID: ${config.freshdesk_agent_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#16a34a15', padding: '2px 6px', borderRadius: '4px', fontWeight: 600, fontSize: '0.75rem' }}>
-                                <CheckCircle size={12} /> Bound
-                              </span>
-                            ) : '-'}
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            <AgentAvailability email={email} />
                           </td>
                           <td style={{ padding: '1rem', textAlign: 'center' }}>
                             <input
