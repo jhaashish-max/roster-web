@@ -1443,6 +1443,7 @@ function App() {
 const AutoEnablementPage = () => {
   const [teams, setTeams] = useState([]);
   const [memberEmails, setMemberEmails] = useState({});
+  const [originalMemberEmails, setOriginalMemberEmails] = useState({});
   const [shiftConfigs, setShiftConfigs] = useState([]);
   const [rosterData, setRosterData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1477,6 +1478,7 @@ const AutoEnablementPage = () => {
         emailsData.forEach(e => { emailMap[e.name] = e; });
       }
       setMemberEmails(emailMap);
+      setOriginalMemberEmails(JSON.parse(JSON.stringify(emailMap)));
 
       if (!selectedTeamId && teamsData.length > 0) {
         setSelectedTeamId(teamsData[0].id);
@@ -1754,7 +1756,7 @@ const AutoEnablementPage = () => {
                             />
                           </td>
                           <td style={{ padding: '1rem', textAlign: 'center' }}>
-                            <AgentAvailability email={email} />
+                            <AgentAvailability email={email} isAutoEnableOn={originalMemberEmails[name]?.auto_enable_bucket ?? true} onShowToast={setToast} />
                           </td>
                           <td style={{ padding: '1rem', textAlign: 'center' }}>
                             <input
