@@ -3,7 +3,7 @@ import React from 'react';
 const Logo = ({ className, width, height, collapsed = false }) => (
     <svg
         xmlns="http://www.w3.org/2000/svg"
-        viewBox={collapsed ? "45 30 140 140" : "45 30 520 140"}
+        viewBox={collapsed ? "45 30 140 140" : "45 30 560 140"}
         width={width ? width : (collapsed ? "40px" : undefined)}
         height={height || "100%"}
         className={className}
