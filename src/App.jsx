@@ -43,6 +43,7 @@ import CommandPalette from './components/CommandPalette';
 import LoginPage from './components/LoginPage';
 import Logo from './components/Logo';
 import ShiftConfigModal from './components/ShiftConfigModal';
+import LivePresence from './components/LivePresence';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend, isAfter, isBefore, parseISO, startOfDay, isSameDay } from 'date-fns';
 import { fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam, isLoggedIn, getUserEmail, logout as authLogout, handleAuthCallback, checkAdmin, listAdmins, addAdmin, removeAdmin, whoAmI, createLeaveRequest, getMyRequests, getPendingRequests, reviewRequest, bulkUpdateRosterEntries, getTeamEmails, updateTeamEmails, getShiftConfigs, saveShiftConfigs, deleteShiftConfig } from './lib/api';
 
@@ -515,7 +516,7 @@ const getShiftClass = (status) => {
 };
 
 // 2. ROSTER TABLE
-const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, onCellUpdate, headerAction, viewMode, allTeamsData }) => {
+const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, onCellUpdate, headerAction, viewMode, allTeamsData, currentUser }) => {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
   const startDate = new Date(year, month - 1, 1);
@@ -636,8 +637,9 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, justifyContent: 'flex-end', minWidth: 'min-content' }}>
-          <div className="zoom-slider-container" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>50%</span>
+          {currentUser && <LivePresence currentUser={currentUser} />}
+          <div className="zoom-slider-container" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-secondary)', padding: '0.35rem 0.5rem', borderRadius: '20px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>50%</span>
             <input
               type="range"
               min="0.5"
@@ -645,10 +647,10 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
               step="0.05"
               value={zoom}
               onChange={(e) => handleZoomAbsolute(parseFloat(e.target.value))}
-              style={{ width: '120px', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+              style={{ width: '60px', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
             />
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', minWidth: '40px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>150%</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', minWidth: '35px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>150%</span>
           </div>
         </div>
       </div>
@@ -2485,6 +2487,7 @@ function AuthenticatedApp({ onLogout }) {
               loading={loading}
               headerAction={
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <LivePresence currentUser={userProfile?.name} />
                   <TeamSelector teams={teams} selectedTeams={selectedTeams} setSelectedTeams={setSelectedTeams} />
                   {isAdmin && (
                     <button className="btn btn-primary" onClick={() => setShowGenerator(true)}>
@@ -2497,6 +2500,7 @@ function AuthenticatedApp({ onLogout }) {
           )}
           {view === 'roster' && (
             <RosterTable
+              currentUser={userProfile?.name}
               rosterData={rosterData}
               currentDate={currentDate}
               onChangeDate={handleDateChange}
