@@ -4,7 +4,7 @@ const Logo = ({ className, width, height, collapsed = false }) => (
     <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox={collapsed ? "45 30 140 140" : "45 30 520 140"}
-        width={width || (collapsed ? "40px" : "auto")}
+        width={width ? width : (collapsed ? "40px" : undefined)}
         height={height || "100%"}
         className={className}
         style={{ transition: 'all 0.3s ease' }}
