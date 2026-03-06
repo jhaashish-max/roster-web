@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { getToken } from '../lib/api';
 
 const AgentAvailability = ({ email, isAutoEnableOn, onShowToast }) => {
     const [status, setStatus] = useState('loading'); // 'loading', 'available', 'unavailable', 'error', 'toggling'
@@ -7,7 +8,10 @@ const AgentAvailability = ({ email, isAutoEnableOn, onShowToast }) => {
     const fetchStatus = async () => {
         try {
             const API_BASE = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-            const response = await fetch(`${API_BASE}/api/freshdesk/availability?email=${encodeURIComponent(email)}`);
+            const token = getToken();
+            const response = await fetch(`${API_BASE}/api/freshdesk/availability?email=${encodeURIComponent(email)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (!response.ok) throw new Error('Network response was not ok');
             const data = await response.json();
             setStatus(data.available ? 'available' : 'unavailable');
@@ -48,10 +52,14 @@ const AgentAvailability = ({ email, isAutoEnableOn, onShowToast }) => {
         try {
             const API_BASE = import.meta.env.VITE_API_BASE_URL || window.location.origin;
             const TOGGLE_URL = `${API_BASE}/api/freshdesk/availability/toggle`;
+            const token = getToken();
 
             const response = await fetch(TOGGLE_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ email, action })
             });
 

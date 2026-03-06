@@ -3,7 +3,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://roster-api-bay.ve
 /**
  * Get the stored auth token
  */
-function getToken() {
+export function getToken() {
     const session = getSession();
     return session?.access_token || null;
 }
