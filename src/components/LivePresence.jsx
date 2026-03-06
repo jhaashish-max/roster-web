@@ -19,7 +19,7 @@ const getAvatarColor = (name) => {
     return colors[Math.abs(hash) % colors.length];
 };
 
-const LivePresence = ({ currentUser }) => {
+const LivePresence = ({ currentUser, showCount = true }) => {
     const [activeUsers, setActiveUsers] = useState([]);
     const [showAllUsers, setShowAllUsers] = useState(false);
     const [clickedUser, setClickedUser] = useState(null);
@@ -81,19 +81,27 @@ const LivePresence = ({ currentUser }) => {
             padding: '0.35rem 0.5rem 0.35rem 0.75rem',
             borderRadius: '20px',
             border: '1px solid var(--border-color)',
-            boxShadow: 'var(--shadow-sm)'
+            boxShadow: 'var(--shadow-sm)',
+            flexShrink: 0
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: '8px', height: '8px', background: 'var(--accent-success)', borderRadius: '50%' }} />
-                    <div style={{ width: '8px', height: '8px', background: 'var(--accent-success)', borderRadius: '50%', position: 'absolute', opacity: 0.5, animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite' }} />
+            {showCount && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '8px', height: '8px', background: 'var(--accent-success)', borderRadius: '50%' }} />
+                        <div style={{ width: '8px', height: '8px', background: 'var(--accent-success)', borderRadius: '50%', position: 'absolute', opacity: 0.5, animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite' }} />
+                    </div>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        {activeUsers.length} Online
+                    </span>
                 </div>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                    {activeUsers.length} Online
-                </span>
-            </div>
+            )}
 
-            <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '0.5rem', borderLeft: '1px solid var(--border-color)' }}>
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                paddingLeft: showCount ? '0.5rem' : '0',
+                borderLeft: showCount ? '1px solid var(--border-color)' : 'none'
+            }}>
                 <div
                     style={{ display: 'flex', flexDirection: 'row', paddingRight: '0.25rem', position: 'relative' }}
                     onMouseLeave={() => { setShowAllUsers(false); setClickedUser(null); }}
@@ -110,6 +118,7 @@ const LivePresence = ({ currentUser }) => {
                             style={{
                                 width: '28px',
                                 height: '28px',
+                                flexShrink: 0,
                                 borderRadius: '50%',
                                 background: getAvatarColor(user.name),
                                 color: '#fff',

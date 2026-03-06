@@ -638,8 +638,12 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, justifyContent: 'flex-end', minWidth: 'min-content' }}>
-          {currentUser && <LivePresence currentUser={currentUser} />}
-          <div className="zoom-slider-container" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-secondary)', padding: '0.35rem 0.5rem', borderRadius: '20px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
+          {currentUser && (
+            <div style={{ flexShrink: 0, minWidth: 'max-content' }}>
+              <LivePresence currentUser={currentUser} showCount={false} />
+            </div>
+          )}
+          <div className="zoom-slider-container" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-secondary)', padding: '0.35rem 0.5rem', borderRadius: '20px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)', flexShrink: 0 }}>
             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>50%</span>
             <input
               type="range"
