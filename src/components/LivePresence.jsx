@@ -69,8 +69,8 @@ const LivePresence = ({ currentUser, showCount = true }) => {
             setActiveUsers(prev => prev.filter(u => u.id !== member.id));
         });
 
-        // Listen for activity updates from other clients
-        channel.bind('client-activity', (data) => {
+        // Listen for activity updates from other clients (relayed by the server)
+        channel.bind('user-activity', (data) => {
             setActiveUsers(prev => prev.map(u => 
                 u.name === data.name ? { ...u, lastActive: Date.now() } : u
             ));
@@ -87,12 +87,12 @@ const LivePresence = ({ currentUser, showCount = true }) => {
                 setActiveUsers(prev => prev.map(u => 
                     u.name === currentUser ? { ...u, lastActive: now } : u
                 ));
-                // Inform others
-                try {
-                    channel.trigger('client-activity', { name: currentUser });
-                } catch (e) {
-                    // Ignore trigger errors if not fully subscribed yet
-                }
+                // Inform others via the server relay
+                fetch(`${API_BASE}/api/pusher/activity`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: currentUser })
+                }).catch(e => console.error("Failed to relay activity", e));
             }
         };
 
