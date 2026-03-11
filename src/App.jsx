@@ -35,7 +35,8 @@ import {
   FileText,
   CheckSquare,
   SunMedium,
-  HelpCircle
+  HelpCircle,
+  Phone
 } from 'lucide-react';
 import CellEditor from './components/CellEditor';
 import Summary from './components/Summary';
@@ -1458,6 +1459,9 @@ const AutoEnablementPage = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  const [editingContact, setEditingContact] = useState(null);
+  const [newMemberName, setNewMemberName] = useState('');
+
   useEffect(() => { loadData(); }, []);
 
   useEffect(() => {
@@ -1523,6 +1527,27 @@ const AutoEnablementPage = () => {
     }));
   };
 
+  const handleAddMember = () => {
+    const name = newMemberName.trim();
+    if (!name || !selectedTeamId) return;
+
+    setTeams(prevTeams => prevTeams.map(t => {
+      if (t.id === selectedTeamId) {
+        if (t.members.includes(name)) return t;
+        return { ...t, members: [...t.members, name] };
+      }
+      return t;
+    }));
+
+    setMemberEmails(prev => ({
+      ...prev,
+      [name]: { ...(prev[name] || {}), name, email: '', auto_enable_bucket: true, contact_number: '' }
+    }));
+
+    setNewMemberName('');
+    setToast({ message: `Added ${name} locally. Remember to click Save Configurations.`, type: 'success' });
+  };
+
   const handleSave = async () => {
     const selectedTeam = teams.find(t => t.id === selectedTeamId);
     if (!selectedTeam) return;
@@ -1538,7 +1563,8 @@ const AutoEnablementPage = () => {
         auto_enable_bucket: config.auto_enable_bucket ?? true,
         start_offset_mins: config.start_offset_mins !== undefined ? config.start_offset_mins : null,
         end_offset_mins: config.end_offset_mins !== undefined ? config.end_offset_mins : null,
-        freshdesk_agent_id: config.freshdesk_agent_id || null
+        freshdesk_agent_id: config.freshdesk_agent_id || null,
+        contact_number: config.contact_number || null
       });
     });
 
@@ -1747,8 +1773,43 @@ const AutoEnablementPage = () => {
                       const effEnd = hasEndOverride ? config.end_offset_mins : (defaultConf ? defaultConf.end_offset_mins : 0);
 
                       return (
-                        <tr key={name} style={{ borderTop: '1px solid var(--border-color)' }}>
-                          <td style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-primary)' }}>{name}</td>
+                        <tr key={name} style={{ borderTop: '1px solid var(--border-color)', background: editingContact === name ? 'var(--bg-hover)' : 'transparent' }}>
+                          <td style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <span style={{ flex: 1 }}>{name}</span>
+                              {editingContact === name ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-primary)', padding: '2px 8px', borderRadius: '20px', border: '1px solid var(--accent-primary)' }}>
+                                  <Phone size={12} style={{ color: 'var(--accent-primary)' }} />
+                                  <input
+                                    type="text"
+                                    value={config.contact_number || ''}
+                                    onChange={(e) => updateMemberEmailConfig(name, 'contact_number', e.target.value)}
+                                    placeholder="Contact No."
+                                    autoFocus
+                                    onBlur={() => setEditingContact(null)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') setEditingContact(null); }}
+                                    style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: '0.75rem', width: '100px', outline: 'none', padding: '2px 0' }}
+                                  />
+                                  <button onClick={() => setEditingContact(null)} style={{ background: 'none', border: 'none', padding: 0, display: 'flex', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setEditingContact(name)}
+                                  style={{
+                                    background: 'none', border: 'none', padding: '4px', borderRadius: '4px', cursor: 'pointer',
+                                    color: config.contact_number ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                    opacity: config.contact_number ? 1 : 0.4,
+                                    transition: 'all 0.2s', display: 'flex'
+                                  }}
+                                  title={config.contact_number || "Add Contact Details"}
+                                >
+                                  <Phone size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
                           <td style={{ padding: '0.75rem 1rem' }}>
                             <input
                               type="email"
@@ -1854,6 +1915,75 @@ const AutoEnablementPage = () => {
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Add Member Row - Below Table */}
+              <div style={{
+                padding: '1rem 1.5rem',
+                background: 'var(--bg-hover)',
+                borderTop: '1px solid var(--border-color)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    background: 'var(--bg-secondary)',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-color)',
+                    flex: 1,
+                    maxWidth: '400px',
+                    transition: 'all 0.2s'
+                  }}>
+                    <Plus size={16} style={{ color: 'var(--text-muted)' }} />
+                    <input
+                      type="text"
+                      value={newMemberName}
+                      onChange={(e) => setNewMemberName(e.target.value)}
+                      placeholder="Add New Member Name..."
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddMember(); }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        width: '100%'
+                      }}
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddMember}
+                    disabled={!newMemberName.trim()}
+                    style={{
+                      background: 'var(--accent-primary)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '0.5rem 1.25rem',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      opacity: newMemberName.trim() ? 1 : 0.5,
+                      transition: 'all 0.2s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    <span>Add Member</span>
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <HelpCircle size={14} />
+                  <span>Members stay in the team list even if not active in today's roster.</span>
+                </div>
               </div>
             </div>
           )}
