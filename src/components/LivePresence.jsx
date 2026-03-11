@@ -20,9 +20,12 @@ const getAvatarColor = (name) => {
 };
 
 const LivePresence = ({ currentUser, showCount = true }) => {
+    // Array of { id, name, lastActive }
     const [activeUsers, setActiveUsers] = useState([]);
     const [showAllUsers, setShowAllUsers] = useState(false);
     const [clickedUser, setClickedUser] = useState(null);
+    const IDLE_TIMEOUT_MS = 60000; // 1 minute
+
 
     useEffect(() => {
         if (!currentUser) return;
@@ -46,8 +49,9 @@ const LivePresence = ({ currentUser, showCount = true }) => {
         // When we first connect, we get the full list of who is already here
         channel.bind('pusher:subscription_succeeded', (members) => {
             const initialUsers = [];
+            const now = Date.now();
             members.each(member => {
-                initialUsers.push({ id: member.id, name: member.info.name });
+                initialUsers.push({ id: member.id, name: member.info.name, lastActive: now });
             });
             setActiveUsers(initialUsers);
         });
@@ -56,7 +60,7 @@ const LivePresence = ({ currentUser, showCount = true }) => {
         channel.bind('pusher:member_added', (member) => {
             setActiveUsers(prev => {
                 if (prev.find(u => u.name === member.info.name)) return prev;
-                return [...prev, { id: member.id, name: member.info.name }];
+                return [...prev, { id: member.id, name: member.info.name, lastActive: Date.now() }];
             });
         });
 
@@ -65,7 +69,49 @@ const LivePresence = ({ currentUser, showCount = true }) => {
             setActiveUsers(prev => prev.filter(u => u.id !== member.id));
         });
 
+        // Listen for activity updates from other clients
+        channel.bind('client-activity', (data) => {
+            setActiveUsers(prev => prev.map(u => 
+                u.name === data.name ? { ...u, lastActive: Date.now() } : u
+            ));
+        });
+
+        // Global activity tracker for the current user
+        let lastBroadcast = 0;
+        const handleActivity = () => {
+            const now = Date.now();
+            // Broadcast your own activity at most once every 5 seconds to reduce noise
+            if (now - lastBroadcast > 5000) {
+                lastBroadcast = now;
+                // Update local state instantly so I never look idle to myself
+                setActiveUsers(prev => prev.map(u => 
+                    u.name === currentUser ? { ...u, lastActive: now } : u
+                ));
+                // Inform others
+                try {
+                    channel.trigger('client-activity', { name: currentUser });
+                } catch (e) {
+                    // Ignore trigger errors if not fully subscribed yet
+                }
+            }
+        };
+
+        window.addEventListener('mousemove', handleActivity);
+        window.addEventListener('keydown', handleActivity);
+        window.addEventListener('click', handleActivity);
+        window.addEventListener('scroll', handleActivity);
+
+        // Force a re-render every 10 seconds to recalculate opacity mathematically
+        const interval = setInterval(() => {
+            setActiveUsers(prev => [...prev]);
+        }, 10000);
+
         return () => {
+            window.removeEventListener('mousemove', handleActivity);
+            window.removeEventListener('keydown', handleActivity);
+            window.removeEventListener('click', handleActivity);
+            window.removeEventListener('scroll', handleActivity);
+            clearInterval(interval);
             channel.unbind_all();
             channel.unsubscribe();
             pusher.disconnect();
@@ -106,41 +152,44 @@ const LivePresence = ({ currentUser, showCount = true }) => {
                     style={{ display: 'flex', flexDirection: 'row', paddingRight: '0.25rem', position: 'relative' }}
                     onMouseLeave={() => { setShowAllUsers(false); setClickedUser(null); }}
                 >
-                    {activeUsers.slice(0, 4).map((user, i) => (
-                        <div
-                            key={user.id}
-                            title={user.name}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setClickedUser(clickedUser === user.id ? null : user.id);
-                                setShowAllUsers(false);
-                            }}
-                            style={{
-                                width: '28px',
-                                height: '28px',
-                                flexShrink: 0,
-                                borderRadius: '50%',
-                                background: getAvatarColor(user.name),
-                                color: '#fff',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                border: '2px solid var(--bg-secondary)',
-                                marginLeft: i > 0 ? '-10px' : '0',
-                                zIndex: 10 - i,
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                transition: 'transform 0.2s',
-                                cursor: 'pointer',
-                                position: 'relative'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                        >
-                            {user.name.charAt(0).toUpperCase()}
+                    {activeUsers.slice(0, 4).map((user, i) => {
+                        const isIdle = Date.now() - (user.lastActive || Date.now()) > IDLE_TIMEOUT_MS;
+                        return (
+                            <div
+                                key={user.id}
+                                title={`${user.name}${isIdle ? ' (Idle)' : ''}`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setClickedUser(clickedUser === user.id ? null : user.id);
+                                    setShowAllUsers(false);
+                                }}
+                                style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    flexShrink: 0,
+                                    borderRadius: '50%',
+                                    background: getAvatarColor(user.name),
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    border: '2px solid var(--bg-secondary)',
+                                    marginLeft: i > 0 ? '-10px' : '0',
+                                    zIndex: 10 - i,
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                    transition: 'transform 0.2s, opacity 0.5s ease',
+                                    cursor: 'pointer',
+                                    position: 'relative',
+                                    opacity: isIdle ? 0.3 : 1
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.opacity = '1'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.opacity = isIdle ? '0.3' : '1'; }}
+                            >
+                                {user.name.charAt(0).toUpperCase()}
 
-                            {clickedUser === user.id && (
+                                {clickedUser === user.id && (
                                 <div style={{
                                     position: 'absolute',
                                     top: '100%',
@@ -165,7 +214,8 @@ const LivePresence = ({ currentUser, showCount = true }) => {
                                 </div>
                             )}
                         </div>
-                    ))}
+                        );
+                    })}
                     {activeUsers.length > 4 && (
                         <div
                             onClick={() => { setShowAllUsers(!showAllUsers); setClickedUser(null); }}
@@ -216,14 +266,17 @@ const LivePresence = ({ currentUser, showCount = true }) => {
                                 Online Users
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '200px', overflowY: 'auto' }}>
-                                {activeUsers.slice(4).map(u => (
-                                    <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
-                                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: getAvatarColor(u.name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 600 }}>
-                                            {u.name.charAt(0).toUpperCase()}
+                                {activeUsers.slice(4).map(u => {
+                                    const isIdle = Date.now() - (u.lastActive || Date.now()) > IDLE_TIMEOUT_MS;
+                                    return (
+                                        <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-primary)', opacity: isIdle ? 0.5 : 1, transition: 'opacity 0.5s ease' }}>
+                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: getAvatarColor(u.name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 600 }}>
+                                                {u.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <span style={{ fontWeight: 500 }}>{u.name} {isIdle && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>(Away)</span>}</span>
                                         </div>
-                                        <span style={{ fontWeight: 500 }}>{u.name}</span>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
