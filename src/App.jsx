@@ -48,6 +48,7 @@ import LivePresence from './components/LivePresence';
 import AgentAvailability from './components/AgentAvailability';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend, isAfter, isBefore, parseISO, startOfDay, isSameDay } from 'date-fns';
 import { fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam, isLoggedIn, getUserEmail, logout as authLogout, handleAuthCallback, checkAdmin, listAdmins, addAdmin, removeAdmin, whoAmI, createLeaveRequest, getMyRequests, getPendingRequests, reviewRequest, getTeamEmails, updateTeamEmails, getShiftConfigs, saveShiftConfigs, deleteShiftConfig } from './lib/api';
+import { getAvatarColor } from './lib/utils';
 
 // N8n Webhook URL - Using Vite proxy to bypass CORS in Dev, Direct URL in Prod
 const IS_DEV = import.meta.env.DEV;
@@ -95,16 +96,6 @@ Return a flat array of objects. Do not use Markdown, do not include comments.
 ]`;
 
 // --- COMPONENTS ---
-
-// Generate consistent color from name (like Slack)
-const getAvatarColor = (name) => {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash % 360);
-  return `hsl(${hue}, 65%, 55%)`;
-};
 
 // Toast Notification
 const Toast = ({ message, type, onClose }) => {
@@ -347,7 +338,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
             </div>
             <div className="stat-card">
               <h3>Night</h3>
-              <div className="stat-value" style={{ color: 'var(--night)' }}>{stats.night}</div>
+              <div className="stat-value" style={{ color: '#475569' }}>{stats.night}</div>
             </div>
             <div className="stat-card">
               <h3>Leave</h3>
@@ -2752,6 +2743,47 @@ function AuthenticatedApp({ onLogout }) {
           onClose={() => setShowAdminManager(false)}
         />
       )}
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="mobile-nav">
+        <button
+          className={`mobile-nav-item ${view === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setView('dashboard')}
+        >
+          <LayoutGrid size={20} />
+          Overview
+        </button>
+        <button
+          className={`mobile-nav-item ${view === 'roster' ? 'active' : ''}`}
+          onClick={() => setView('roster')}
+        >
+          <Calendar size={20} />
+          Roster
+        </button>
+        <button
+          className={`mobile-nav-item ${view === 'summary' ? 'active' : ''}`}
+          onClick={() => setView('summary')}
+        >
+          <PieChart size={20} />
+          Reports
+        </button>
+        <button
+          className={`mobile-nav-item ${view === 'requests' ? 'active' : ''}`}
+          onClick={() => setView('requests')}
+        >
+          <FileText size={20} />
+          Requests
+        </button>
+        {userIsAdminRole && (
+          <button
+            className={`mobile-nav-item ${view === 'review' ? 'active' : ''}`}
+            onClick={() => setView('review')}
+          >
+            <CheckSquare size={20} />
+            Approvals
+          </button>
+        )}
+      </nav>
 
     </div>
   );

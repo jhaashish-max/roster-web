@@ -1,23 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Users } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import Pusher from 'pusher-js';
-
-const getAvatarColor = (name) => {
-    const colors = [
-        'var(--accent-primary)',
-        '#3b82f6', // blue
-        '#10b981', // emerald
-        '#f59e0b', // amber
-        '#ef4444', // red
-        '#8b5cf6', // violet
-        '#ec4899', // pink
-    ];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return colors[Math.abs(hash) % colors.length];
-};
+import { getAvatarColor } from '../lib/utils';
 
 const LivePresence = ({ currentUser, showCount = true }) => {
     // Array of { id, name, lastActive }
@@ -283,18 +266,6 @@ const LivePresence = ({ currentUser, showCount = true }) => {
                 </div>
             </div>
 
-            <style>{`
-@keyframes ping {
-    75%, 100% {
-        transform: scale(2.5);
-        opacity: 0;
-    }
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-`}</style>
         </div>
     );
 };
