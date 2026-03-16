@@ -47,7 +47,7 @@ import ShiftConfigModal from './components/ShiftConfigModal';
 import LivePresence from './components/LivePresence';
 import AgentAvailability from './components/AgentAvailability';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isWeekend, isAfter, isBefore, parseISO, startOfDay, isSameDay } from 'date-fns';
-import { fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam, isLoggedIn, getUserEmail, logout as authLogout, handleAuthCallback, checkAdmin, listAdmins, addAdmin, removeAdmin, whoAmI, createLeaveRequest, getMyRequests, getPendingRequests, reviewRequest, bulkUpdateRosterEntries, getTeamEmails, updateTeamEmails, getShiftConfigs, saveShiftConfigs, deleteShiftConfig } from './lib/api';
+import { fetchRoster, fetchAllTeamsRoster, checkRosterExists, deleteRoster, updateRosterEntry, getTeams, createTeam, updateTeam, deleteTeam, isLoggedIn, getUserEmail, logout as authLogout, handleAuthCallback, checkAdmin, listAdmins, addAdmin, removeAdmin, whoAmI, createLeaveRequest, getMyRequests, getPendingRequests, reviewRequest, getTeamEmails, updateTeamEmails, getShiftConfigs, saveShiftConfigs, deleteShiftConfig } from './lib/api';
 
 // N8n Webhook URL - Using Vite proxy to bypass CORS in Dev, Direct URL in Prod
 const IS_DEV = import.meta.env.DEV;
@@ -518,7 +518,7 @@ const getShiftClass = (status) => {
 };
 
 // 2. ROSTER TABLE
-const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, onCellUpdate, headerAction, viewMode, allTeamsData, currentUser }) => {
+const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, onCellUpdate, headerAction, viewMode, allTeamsData, currentUser, teams = [] }) => {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
   const startDate = new Date(year, month - 1, 1);
@@ -556,7 +556,7 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
         if (!map[d.Name]) map[d.Name] = {};
         map[d.Name][d.Date] = d.Status;
       });
-      return [{ team: null, agents, map }];
+      return [{ team: null, agents, unrostered: [], map }];
     }
 
     // Group by Team field
@@ -575,9 +575,16 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
         if (!map[d.Name]) map[d.Name] = {};
         map[d.Name][d.Date] = d.Status;
       });
-      return { team, agents, map };
+
+      // Find team members with no roster entries this month
+      const teamDef = teams.find(t => t.name === team);
+      const unrostered = teamDef
+        ? (teamDef.members || []).filter(m => !agents.includes(m))
+        : [];
+
+      return { team, agents, unrostered, map };
     });
-  }, [displayData, viewMode]);
+  }, [displayData, viewMode, teams]);
 
   // Selection state
   const [selection, setSelection] = useState(null);
@@ -748,6 +755,40 @@ const RosterTable = ({ rosterData, currentDate, onChangeDate, isAdmin, loading, 
                                 />
                               ) : (
                                 <span className="cell-text">{status}</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                    {group.unrostered.map(agent => (
+                      <tr key={`${group.team}-unrostered-${agent}`} style={{ opacity: 0.6 }}>
+                        <td
+                          className="sticky-col agent-cell"
+                          style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {agent}
+                            <span style={{ fontSize: '0.65rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '1px 5px', color: 'var(--text-muted)', fontStyle: 'normal' }}>Not set</span>
+                          </div>
+                        </td>
+                        {days.map(day => {
+                          const dateStr = format(day, 'yyyy-MM-dd');
+                          const isSelected = isCellSelected(agent, dateStr);
+                          return (
+                            <td
+                              key={dateStr}
+                              className={`roster-cell ${isWeekend(day) ? 'weekend-cell' : ''} ${isSelected ? 'selected-cell' : ''}`}
+                              onClick={(e) => handleCellClick(agent, dateStr, e)}
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              {isAdmin ? (
+                                <CellEditor
+                                  value="-"
+                                  onFinish={(newVal) => handleCellBlur(agent, dateStr, newVal)}
+                                />
+                              ) : (
+                                <span className="cell-text">-</span>
                               )}
                             </td>
                           );
@@ -2642,6 +2683,7 @@ function AuthenticatedApp({ onLogout }) {
               onCellUpdate={handleCellUpdate}
               viewMode="all"
               allTeamsData={allTeamsData}
+              teams={teams}
               headerAction={
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                   <TeamSelector teams={teams} selectedTeams={selectedTeams} setSelectedTeams={setSelectedTeams} />
@@ -2710,6 +2752,7 @@ function AuthenticatedApp({ onLogout }) {
           onClose={() => setShowAdminManager(false)}
         />
       )}
+
     </div>
   );
 }
