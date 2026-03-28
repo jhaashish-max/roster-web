@@ -146,12 +146,21 @@ const TeamSelector = ({ teams, selectedTeams, setSelectedTeams }) => {
 
   const allSelected = selectedTeams.length === 0;
 
-  const toggleAll = () => setSelectedTeams([]);
+  const isTeamChecked = (name) => allSelected || selectedTeams.includes(name);
 
   const toggleTeam = (name) => {
-    setSelectedTeams(prev =>
-      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
-    );
+    if (allSelected) {
+      // Deselect just this one; keep all others selected
+      setSelectedTeams(teams.map(t => t.name).filter(n => n !== name));
+    } else {
+      setSelectedTeams(prev => {
+        const next = prev.includes(name)
+          ? prev.filter(n => n !== name)
+          : [...prev, name];
+        // Auto-revert to "all" when every team is checked
+        return next.length === teams.length ? [] : next;
+      });
+    }
   };
 
   const label = allSelected
@@ -168,16 +177,22 @@ const TeamSelector = ({ teams, selectedTeams, setSelectedTeams }) => {
       </div>
       {open && (
         <div className="multi-team-dropdown">
-          <label className="multi-team-option">
-            <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-            <span>All Groups</span>
-          </label>
+          <div className="multi-team-selectall" onClick={() => {
+            if (allSelected) {
+              // Clear all so user can pick individually
+              setSelectedTeams(teams.length > 0 ? [teams[0].name] : []);
+            } else {
+              setSelectedTeams([]);
+            }
+          }}>
+            {allSelected ? 'Clear all' : 'Select all'}
+          </div>
           <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.25rem 0' }} />
           {teams.map(t => (
             <label key={t.id} className="multi-team-option">
               <input
                 type="checkbox"
-                checked={selectedTeams.includes(t.name)}
+                checked={isTeamChecked(t.name)}
                 onChange={() => toggleTeam(t.name)}
               />
               <span>{t.name}</span>
@@ -242,7 +257,22 @@ const getStatusClass = (status, dateObj) => {
 };
 
 const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerAction }) => {
-  const todayStr = format(currentDate, 'yyyy-MM-dd');
+  const [viewDate, setViewDate] = useState(new Date());
+  const isViewingToday = format(viewDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+
+  const goToPrevDay = () => setViewDate(prev => {
+    const d = new Date(prev);
+    d.setDate(d.getDate() - 1);
+    return d;
+  });
+  const goToNextDay = () => setViewDate(prev => {
+    const d = new Date(prev);
+    d.setDate(d.getDate() + 1);
+    return d;
+  });
+  const goToToday = () => setViewDate(new Date());
+
+  const todayStr = format(viewDate, 'yyyy-MM-dd');
   const todayData = rosterData.filter(d => d.Date === todayStr);
 
   const stats = useMemo(() => {
@@ -305,8 +335,25 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <LiveClock />
-
+        <div className="dashboard-header-left">
+          <LiveClock />
+          <div className="dash-date-nav">
+            <button className="dash-date-nav-btn" onClick={goToPrevDay} title="Previous day">
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              className={`dash-date-chip${isViewingToday ? ' dash-date-chip-today' : ''}`}
+              onClick={goToToday}
+              title={isViewingToday ? 'Viewing today' : 'Back to today'}
+            >
+              <CalendarDays size={13} />
+              {format(viewDate, 'EEE, MMM d')}
+            </button>
+            <button className="dash-date-nav-btn" onClick={goToNextDay} title="Next day">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
         {headerAction}
       </div>
 
@@ -360,7 +407,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
             <div className="panel" style={{ padding: '1.5rem 2rem' }}>
               <div className="panel-header" style={{ marginBottom: '1.5rem' }}>
                 <Briefcase size={20} style={{ color: 'var(--accent-primary)' }} />
-                <h3 style={{ fontSize: '1.1rem' }}>Today's Schedule</h3>
+                <h3 style={{ fontSize: '1.1rem' }}>{isViewingToday ? "Today's Schedule" : `Schedule — ${format(viewDate, 'MMM d')}`}</h3>
               </div>
               <div className="segmented-schedule">
                 {/* Morning Block */}
@@ -2697,6 +2744,8 @@ function AuthenticatedApp({ onLogout }) {
               currentDate={currentDate}
               selectedTeam={selectedTeams.length === 1 ? selectedTeams[0] : ''}
               viewMode={selectedTeams.length === 1 ? 'single' : 'all'}
+              teams={teams}
+              selectedTeams={selectedTeams}
               headerAction={
                 <TeamSelector teams={teams} selectedTeams={selectedTeams} setSelectedTeams={setSelectedTeams} />
               }

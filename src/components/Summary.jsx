@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, isWithinInterval, parseISO, startOfMonth, endOfMonth, isWeekend, eachMonthOfInterval } from 'date-fns';
-import { Download, Loader2, CalendarDays, Users, Clock, Moon, Sun as SunIcon, TrendingUp } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { format, startOfWeek, endOfWeek, isWithinInterval, parseISO, startOfMonth, endOfMonth, isWeekend, eachMonthOfInterval, eachDayOfInterval } from 'date-fns';
+import { Download, Loader2, CalendarDays, Users, Clock } from 'lucide-react';
 import { fetchRoster, fetchAllTeamsRoster } from '../lib/api';
 
-const Summary = ({ currentDate, selectedTeam, viewMode, headerAction }) => {
+const Summary = ({ currentDate, selectedTeam, viewMode, headerAction, teams = [], selectedTeams = [] }) => {
     const [dateRange, setDateRange] = useState({
         start: format(startOfMonth(currentDate), 'yyyy-MM-dd'),
         end: format(endOfMonth(currentDate), 'yyyy-MM-dd')
@@ -12,6 +12,7 @@ const Summary = ({ currentDate, selectedTeam, viewMode, headerAction }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [activePreset, setActivePreset] = useState('month');
+    const [activeSubTab, setActiveSubTab] = useState('analytics');
 
     // Fetch Logic
     useEffect(() => {
@@ -108,6 +109,75 @@ const Summary = ({ currentDate, selectedTeam, viewMode, headerAction }) => {
         return t;
     }, [stats, agents, statusTypes]);
 
+    // Headcount data per team per day
+    const headcountByTeam = useMemo(() => {
+        if (!teams.length) return {};
+
+        const start = parseISO(dateRange.start);
+        const end = parseISO(dateRange.end);
+        const allDates = eachDayOfInterval({ start, end });
+
+        // Group roster data by team
+        const byTeam = {};
+        data.forEach(row => {
+            const team = row.Team || '';
+            if (!byTeam[team]) byTeam[team] = [];
+            byTeam[team].push(row);
+        });
+
+        // Teams to show
+        const teamsToProcess = selectedTeams.length > 0
+            ? teams.filter(t => selectedTeams.includes(t.name))
+            : teams;
+
+        const result = {};
+        teamsToProcess.forEach(team => {
+            const teamRows = byTeam[team.name] || [];
+            const totalHC = team.members ? team.members.length : 0;
+
+            const dailyData = allDates.map(date => {
+                const dateStr = format(date, 'yyyy-MM-dd');
+                const dayRows = teamRows.filter(r => r.Date === dateStr);
+
+                const rosteredHC = new Set(dayRows.map(r => r.Name)).size;
+
+                const presentHC = dayRows.filter(r => {
+                    const s = (r.Status || '').trim();
+                    if (!s || s === '-' || s === 'x') return false;
+                    const upper = s.toUpperCase();
+                    return s.includes(':') || upper === 'WFH' || upper === 'AVAILABLE';
+                }).length;
+
+                const woff = dayRows.filter(r => r.Status === 'WO').length;
+                const pl = dayRows.filter(r => ['PL', 'SL'].includes(r.Status)).length;
+                const wl = dayRows.filter(r => r.Status === 'WL').length;
+
+                // Shrinkage formulas:
+                // Planned = (PL + WOFF) / Total HC
+                // Unplanned (WL) = WL / Rostered HC
+                // Overall = Planned + Unplanned
+                const shrinkagePlanned = totalHC > 0 ? (pl + woff) / totalHC * 100 : 0;
+                const shrinkageUnplanned = rosteredHC > 0 ? wl / rosteredHC * 100 : 0;
+                const shrinkageOverall = shrinkagePlanned + shrinkageUnplanned;
+
+                return { date, dateStr, rosteredHC, presentHC, woff, pl, wl, shrinkagePlanned, shrinkageUnplanned, shrinkageOverall };
+            });
+
+            result[team.name] = { totalHC, dailyData };
+        });
+
+        return result;
+    }, [data, teams, selectedTeams, dateRange]);
+
+    const headcountTeamNames = Object.keys(headcountByTeam);
+
+    const getShrinkageCellClass = (value) => {
+        if (value === 0) return 'hc-shrink-zero';
+        if (value <= 10) return 'hc-shrink-low';
+        if (value <= 25) return 'hc-shrink-mid';
+        return 'hc-shrink-high';
+    };
+
     // Presets
     const setMonthRange = () => {
         setActivePreset('month');
@@ -178,83 +248,212 @@ const Summary = ({ currentDate, selectedTeam, viewMode, headerAction }) => {
                             className="summary-date-input"
                         />
                     </div>
-                    <button className="summary-export-btn" onClick={handleExportCSV} title="Export CSV">
-                        <Download size={16} />
-                    </button>
+                    {activeSubTab === 'analytics' && (
+                        <button className="summary-export-btn" onClick={handleExportCSV} title="Export CSV">
+                            <Download size={16} />
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="summary-table-card">
-                {loading && agents.length === 0 ? (
-                    <div className="summary-loading">
-                        <Loader2 size={28} className="spin" />
-                        <p>Fetching summary data...</p>
-                    </div>
-                ) : agents.length === 0 ? (
-                    <div className="summary-empty">
-                        <CalendarDays size={40} />
-                        <p>No data found for this period.</p>
-                    </div>
-                ) : (
-                    <div className="summary-table-scroll">
-                        <table className="summary-table">
-                            <thead>
-                                <tr>
-                                    <th className="summary-th-agent">Agent</th>
-                                    <th className="summary-th summary-th-oncall">On Call</th>
-                                    <th className="summary-th summary-th-night">Night</th>
-                                    {statusTypes.map(type => (
-                                        <th key={type} className="summary-th">{type}</th>
-                                    ))}
-                                    <th className="summary-th summary-th-total">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {agents.map(agent => (
-                                    <tr key={agent} className="summary-row">
-                                        <td className="summary-td-agent">{agent}</td>
-                                        <td className="summary-td">
-                                            <span className={`summary-badge ${stats[agent].OnCall > 0 ? 'badge-oncall' : 'badge-zero'}`}>
-                                                {stats[agent].OnCall || '-'}
-                                            </span>
-                                        </td>
-                                        <td className="summary-td">
-                                            <span className={`summary-badge ${stats[agent].NightShift > 0 ? 'badge-night' : 'badge-zero'}`}>
-                                                {stats[agent].NightShift || '-'}
-                                            </span>
-                                        </td>
+            {/* Sub-tabs */}
+            <div className="summary-subtabs">
+                <button
+                    className={`summary-subtab-btn ${activeSubTab === 'analytics' ? 'active' : ''}`}
+                    onClick={() => setActiveSubTab('analytics')}
+                >
+                    Analytics
+                </button>
+                <button
+                    className={`summary-subtab-btn ${activeSubTab === 'headcount' ? 'active' : ''}`}
+                    onClick={() => setActiveSubTab('headcount')}
+                >
+                    Headcount
+                </button>
+            </div>
+
+            {/* Analytics Tab */}
+            {activeSubTab === 'analytics' && (
+                <div className="summary-table-card">
+                    {loading && agents.length === 0 ? (
+                        <div className="summary-loading">
+                            <Loader2 size={28} className="spin" />
+                            <p>Fetching summary data...</p>
+                        </div>
+                    ) : agents.length === 0 ? (
+                        <div className="summary-empty">
+                            <CalendarDays size={40} />
+                            <p>No data found for this period.</p>
+                        </div>
+                    ) : (
+                        <div className="summary-table-scroll">
+                            <table className="summary-table">
+                                <thead>
+                                    <tr>
+                                        <th className="summary-th-agent">Agent</th>
+                                        <th className="summary-th summary-th-oncall">On Call</th>
+                                        <th className="summary-th summary-th-night">Night</th>
                                         {statusTypes.map(type => (
-                                            <td key={type} className="summary-td">
-                                                <span className={stats[agent][type] ? 'summary-val' : 'summary-val-empty'}>
-                                                    {stats[agent][type] || '-'}
+                                            <th key={type} className="summary-th">{type}</th>
+                                        ))}
+                                        <th className="summary-th summary-th-total">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {agents.map(agent => (
+                                        <tr key={agent} className="summary-row">
+                                            <td className="summary-td-agent">{agent}</td>
+                                            <td className="summary-td">
+                                                <span className={`summary-badge ${stats[agent].OnCall > 0 ? 'badge-oncall' : 'badge-zero'}`}>
+                                                    {stats[agent].OnCall || '-'}
                                                 </span>
                                             </td>
-                                        ))}
-                                        <td className="summary-td summary-td-total">{stats[agent].Total}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr className="summary-totals-row">
-                                    <td className="summary-td-agent" style={{ fontWeight: 700 }}>Total</td>
-                                    <td className="summary-td"><span className="summary-badge badge-oncall">{totals.OnCall}</span></td>
-                                    <td className="summary-td"><span className="summary-badge badge-night">{totals.NightShift}</span></td>
-                                    {statusTypes.map(type => (
-                                        <td key={type} className="summary-td"><span className="summary-val" style={{ fontWeight: 600 }}>{totals[type] || 0}</span></td>
+                                            <td className="summary-td">
+                                                <span className={`summary-badge ${stats[agent].NightShift > 0 ? 'badge-night' : 'badge-zero'}`}>
+                                                    {stats[agent].NightShift || '-'}
+                                                </span>
+                                            </td>
+                                            {statusTypes.map(type => (
+                                                <td key={type} className="summary-td">
+                                                    <span className={stats[agent][type] ? 'summary-val' : 'summary-val-empty'}>
+                                                        {stats[agent][type] || '-'}
+                                                    </span>
+                                                </td>
+                                            ))}
+                                            <td className="summary-td summary-td-total">{stats[agent].Total}</td>
+                                        </tr>
                                     ))}
-                                    <td className="summary-td summary-td-total" style={{ fontWeight: 800 }}>{totals.Total}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                                </tbody>
+                                <tfoot>
+                                    <tr className="summary-totals-row">
+                                        <td className="summary-td-agent" style={{ fontWeight: 700 }}>Total</td>
+                                        <td className="summary-td"><span className="summary-badge badge-oncall">{totals.OnCall}</span></td>
+                                        <td className="summary-td"><span className="summary-badge badge-night">{totals.NightShift}</span></td>
+                                        {statusTypes.map(type => (
+                                            <td key={type} className="summary-td"><span className="summary-val" style={{ fontWeight: 600 }}>{totals[type] || 0}</span></td>
+                                        ))}
+                                        <td className="summary-td summary-td-total" style={{ fontWeight: 800 }}>{totals.Total}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    )}
+                    {loading && agents.length > 0 && (
+                        <div className="summary-loading-bar">
+                            <Loader2 size={14} className="spin" /> Updating...
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Headcount Tab */}
+            {activeSubTab === 'headcount' && (
+                loading && headcountTeamNames.length === 0 ? (
+                    <div className="summary-table-card">
+                        <div className="summary-loading">
+                            <Loader2 size={28} className="spin" />
+                            <p>Fetching headcount data...</p>
+                        </div>
                     </div>
-                )}
-                {loading && agents.length > 0 && (
-                    <div className="summary-loading-bar">
-                        <Loader2 size={14} className="spin" /> Updating...
+                ) : headcountTeamNames.length === 0 ? (
+                    <div className="summary-table-card">
+                        <div className="summary-empty">
+                            <Users size={40} />
+                            <p>No headcount data found for this period.</p>
+                        </div>
                     </div>
-                )}
-            </div>
+                ) : (
+                    <div className="hc-teams-container">
+                        {headcountTeamNames.map(teamName => {
+                            const { totalHC, dailyData } = headcountByTeam[teamName];
+                            const todayStr = format(new Date(), 'yyyy-MM-dd');
+                            return (
+                                <div key={teamName} className="hc-team-card">
+                                    <div className="hc-team-header">{teamName}</div>
+                                    <div className="hc-table-wrap">
+                                        <table className="hc-table">
+                                            <thead>
+                                                <tr>
+                                                    <th className="hc-th-metric">HC</th>
+                                                    {dailyData.map(d => {
+                                                        const isCurrent = d.dateStr === todayStr;
+                                                        const weekend = isWeekend(d.date);
+                                                        return (
+                                                            <th key={d.dateStr} className={`hc-th-date${isCurrent ? ' hc-today' : ''}${weekend ? ' hc-weekend' : ''}`}>
+                                                                <span className="hc-date-num">{format(d.date, 'M/d/yy')}</span>
+                                                                <span className="hc-day-name">{format(d.date, 'EEEE')}</span>
+                                                            </th>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {/* HC counts group */}
+                                                <tr className="hc-row">
+                                                    <td className="hc-metric-label">Total HC</td>
+                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{totalHC}</td>)}
+                                                </tr>
+                                                <tr className="hc-row">
+                                                    <td className="hc-metric-label">Rostered HC</td>
+                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{d.rosteredHC}</td>)}
+                                                </tr>
+                                                <tr className="hc-row hc-row-last">
+                                                    <td className="hc-metric-label">Present HC</td>
+                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{d.presentHC}</td>)}
+                                                </tr>
+                                                {/* Absence breakdown group */}
+                                                <tr className="hc-row hc-group-start">
+                                                    <td className="hc-metric-label">WOFF</td>
+                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{d.woff || ''}</td>)}
+                                                </tr>
+                                                <tr className="hc-row">
+                                                    <td className="hc-metric-label">PL</td>
+                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{d.pl || ''}</td>)}
+                                                </tr>
+                                                <tr className="hc-row hc-row-last">
+                                                    <td className="hc-metric-label">WL</td>
+                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{d.wl || ''}</td>)}
+                                                </tr>
+                                                {/* Shrinkage group */}
+                                                {[
+                                                    { label: 'Shrinkage - Overall', key: 'shrinkageOverall', first: true },
+                                                    { label: 'Shrinkage - Planned', key: 'shrinkagePlanned' },
+                                                    { label: 'Shrinkage - Unplanned (WL)', key: 'shrinkageUnplanned' },
+                                                ].map(({ label, key, first }) => (
+                                                    <tr key={key} className={`hc-row hc-shrinkage-row${first ? ' hc-group-start' : ''}`}>
+                                                        <td className="hc-metric-label hc-shrinkage-label">{label}</td>
+                                                        {dailyData.map(d => {
+                                                            const weekend = isWeekend(d.date);
+                                                            const today = d.dateStr === todayStr;
+                                                            if (weekend) {
+                                                                return (
+                                                                    <td key={d.dateStr} className={`hc-td hc-shrink-weekend${today ? ' hc-today' : ''}`}>
+                                                                        Weekend
+                                                                    </td>
+                                                                );
+                                                            }
+                                                            return (
+                                                                <td key={d.dateStr} className={`hc-td hc-shrink-cell ${getShrinkageCellClass(d[key])}${today ? ' hc-today' : ''}`}>
+                                                                    {d[key].toFixed(2)}%
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {loading && (
+                                        <div className="summary-loading-bar">
+                                            <Loader2 size={14} className="spin" /> Updating...
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )
+            )}
         </div>
     );
 };
