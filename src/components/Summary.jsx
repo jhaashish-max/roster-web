@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, isWithinInterval, parseISO, startOfMonth, endOfMonth, isWeekend, eachMonthOfInterval, eachDayOfInterval } from 'date-fns';
 import { Download, Loader2, CalendarDays, Users, Clock } from 'lucide-react';
 import { fetchRoster, fetchAllTeamsRoster } from '../lib/api';
+import XLSX from 'xlsx-js-style';
 
 const Summary = ({ currentDate, selectedTeam, viewMode, headerAction, teams = [], selectedTeams = [] }) => {
     const [dateRange, setDateRange] = useState({
@@ -178,6 +179,161 @@ const Summary = ({ currentDate, selectedTeam, viewMode, headerAction, teams = []
         return 'hc-shrink-high';
     };
 
+    // Export Headcount to Excel
+    const handleExportHeadcountXL = () => {
+        const wb = XLSX.utils.book_new();
+
+        // Shared styles
+        const border = {
+            top: { style: 'thin', color: { rgb: 'D0D5DD' } },
+            bottom: { style: 'thin', color: { rgb: 'D0D5DD' } },
+            left: { style: 'thin', color: { rgb: 'D0D5DD' } },
+            right: { style: 'thin', color: { rgb: 'D0D5DD' } },
+        };
+        const headerFill = { fgColor: { rgb: '1F3864' } };
+        const headerFont = { bold: true, color: { rgb: 'FFFFFF' }, sz: 10, name: 'Calibri' };
+        const metricFont = { bold: true, sz: 10, name: 'Calibri', color: { rgb: '1F3864' } };
+        const dataFont = { sz: 10, name: 'Calibri' };
+        const centerAlign = { horizontal: 'center', vertical: 'center' };
+        const leftAlign = { horizontal: 'left', vertical: 'center' };
+        const weekendFill = { fgColor: { rgb: 'F2F4F7' } };
+        const teamHeaderFill = { fgColor: { rgb: 'E8ECF4' } };
+        const teamHeaderFont = { bold: true, sz: 11, name: 'Calibri', color: { rgb: '1F3864' } };
+
+        const shrinkFills = {
+            zero: { fgColor: { rgb: 'DCFCE7' } },
+            low: { fgColor: { rgb: 'FEF9C3' } },
+            mid: { fgColor: { rgb: 'FFEDD5' } },
+            high: { fgColor: { rgb: 'FEE2E2' } },
+        };
+        const shrinkFonts = {
+            zero: { sz: 10, name: 'Calibri', bold: true, color: { rgb: '166534' } },
+            low: { sz: 10, name: 'Calibri', bold: true, color: { rgb: '92400E' } },
+            mid: { sz: 10, name: 'Calibri', bold: true, color: { rgb: 'C2410C' } },
+            high: { sz: 10, name: 'Calibri', bold: true, color: { rgb: 'B91C1C' } },
+        };
+        const getShrinkStyle = (val) => {
+            if (val === 0) return { fill: shrinkFills.zero, font: shrinkFonts.zero };
+            if (val <= 10) return { fill: shrinkFills.low, font: shrinkFonts.low };
+            if (val <= 25) return { fill: shrinkFills.mid, font: shrinkFonts.mid };
+            return { fill: shrinkFills.high, font: shrinkFonts.high };
+        };
+
+        const weekendFont = { sz: 9, name: 'Calibri', italic: true, color: { rgb: '98A2B3' } };
+        const metricLabels = ['Total HC', 'Rostered HC', 'Present HC', 'WOFF', 'PL', 'WL', 'Shrinkage - Overall', 'Shrinkage - Planned', 'Shrinkage - Unplanned (WL)'];
+        const shrinkageKeys = ['shrinkageOverall', 'shrinkagePlanned', 'shrinkageUnplanned'];
+        const BLANK_ROWS = 3;
+
+        // Build all rows for every team on a single sheet
+        const allRows = [];
+        const merges = [];
+        const rowHeights = [];
+        let numDateCols = 0;
+
+        headcountTeamNames.forEach((teamName, teamIdx) => {
+            const { totalHC, dailyData } = headcountByTeam[teamName];
+            numDateCols = Math.max(numDateCols, dailyData.length);
+
+            // 3 blank rows between teams (not before the first)
+            if (teamIdx > 0) {
+                for (let b = 0; b < BLANK_ROWS; b++) {
+                    allRows.push([]);
+                    rowHeights.push({ hpt: 16 });
+                }
+            }
+
+            const teamStartRow = allRows.length;
+
+            // Team name header row
+            const teamRow = [{ v: teamName, s: { font: teamHeaderFont, fill: teamHeaderFill, alignment: leftAlign, border } }];
+            for (let i = 0; i < dailyData.length; i++) {
+                teamRow.push({ v: '', s: { fill: teamHeaderFill, border } });
+            }
+            allRows.push(teamRow);
+            rowHeights.push({ hpt: 26 });
+            merges.push({ s: { r: teamStartRow, c: 0 }, e: { r: teamStartRow, c: dailyData.length } });
+
+            // Date header row
+            const headerRow = [{ v: 'HC', s: { font: headerFont, fill: headerFill, alignment: centerAlign, border } }];
+            dailyData.forEach(d => {
+                const weekend = isWeekend(d.date);
+                headerRow.push({
+                    v: `${format(d.date, 'M/d/yy')}\n${format(d.date, 'EEEE')}`,
+                    s: {
+                        font: { ...headerFont, sz: 9 },
+                        fill: weekend ? { fgColor: { rgb: '2D4A7A' } } : headerFill,
+                        alignment: { ...centerAlign, wrapText: true },
+                        border,
+                    }
+                });
+            });
+            allRows.push(headerRow);
+            rowHeights.push({ hpt: 36 });
+
+            // Metric data rows
+            metricLabels.forEach((label, idx) => {
+                const row = [{
+                    v: label,
+                    s: { font: metricFont, alignment: leftAlign, border, fill: { fgColor: { rgb: 'F8FAFC' } } }
+                }];
+
+                dailyData.forEach(d => {
+                    const weekend = isWeekend(d.date);
+                    const isShrinkage = idx >= 6;
+
+                    if (isShrinkage) {
+                        const key = shrinkageKeys[idx - 6];
+                        if (weekend) {
+                            row.push({
+                                v: 'Weekend',
+                                s: { font: weekendFont, fill: weekendFill, alignment: centerAlign, border }
+                            });
+                        } else {
+                            const val = d[key];
+                            const style = getShrinkStyle(val);
+                            row.push({
+                                v: val / 100,
+                                t: 'n',
+                                z: '0.00%',
+                                s: { font: style.font, fill: style.fill, alignment: centerAlign, border }
+                            });
+                        }
+                    } else {
+                        let val;
+                        switch (idx) {
+                            case 0: val = totalHC; break;
+                            case 1: val = d.rosteredHC; break;
+                            case 2: val = d.presentHC; break;
+                            case 3: val = d.woff || ''; break;
+                            case 4: val = d.pl || ''; break;
+                            case 5: val = d.wl || ''; break;
+                        }
+                        row.push({
+                            v: val,
+                            t: typeof val === 'number' ? 'n' : 's',
+                            s: {
+                                font: dataFont,
+                                fill: weekend ? weekendFill : { fgColor: { rgb: 'FFFFFF' } },
+                                alignment: centerAlign,
+                                border,
+                            }
+                        });
+                    }
+                });
+                allRows.push(row);
+                rowHeights.push({ hpt: 22 });
+            });
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(allRows);
+        ws['!cols'] = [{ wch: 26 }, ...Array(numDateCols).fill({ wch: 14 })];
+        ws['!rows'] = rowHeights;
+        ws['!merges'] = merges;
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Headcount');
+        XLSX.writeFile(wb, `headcount_${dateRange.start}_${dateRange.end}.xlsx`);
+    };
+
     // Presets
     const setMonthRange = () => {
         setActivePreset('month');
@@ -250,6 +406,11 @@ const Summary = ({ currentDate, selectedTeam, viewMode, headerAction, teams = []
                     </div>
                     {activeSubTab === 'analytics' && (
                         <button className="summary-export-btn" onClick={handleExportCSV} title="Export CSV">
+                            <Download size={16} />
+                        </button>
+                    )}
+                    {activeSubTab === 'headcount' && headcountTeamNames.length > 0 && (
+                        <button className="summary-export-btn" onClick={handleExportHeadcountXL} title="Export to Excel">
                             <Download size={16} />
                         </button>
                     )}
