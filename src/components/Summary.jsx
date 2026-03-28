@@ -528,76 +528,55 @@ const Summary = ({ currentDate, selectedTeam, viewMode, headerAction, teams = []
                         {headcountTeamNames.map(teamName => {
                             const { totalHC, dailyData } = headcountByTeam[teamName];
                             const todayStr = format(new Date(), 'yyyy-MM-dd');
+                            const cls = (d) => `hc-td${d.dateStr === todayStr ? ' hc-today-col' : ''}${isWeekend(d.date) ? ' hc-weekend-col' : ''}`;
                             return (
-                                <div key={teamName} className="hc-team-card">
-                                    <div className="hc-team-header">{teamName}</div>
+                                <div key={teamName} className="hc-card">
+                                    <div className="hc-card-header">
+                                        <span className="hc-card-team-name">{teamName}</span>
+                                        <span className="hc-card-team-count">{totalHC} members</span>
+                                    </div>
                                     <div className="hc-table-wrap">
                                         <table className="hc-table">
                                             <thead>
-                                                <tr>
-                                                    <th className="hc-th-metric">HC</th>
+                                                <tr className="hc-date-row">
+                                                    <th className="hc-corner"></th>
                                                     {dailyData.map(d => {
-                                                        const isCurrent = d.dateStr === todayStr;
+                                                        const today = d.dateStr === todayStr;
                                                         const weekend = isWeekend(d.date);
                                                         return (
-                                                            <th key={d.dateStr} className={`hc-th-date${isCurrent ? ' hc-today' : ''}${weekend ? ' hc-weekend' : ''}`}>
-                                                                <span className="hc-date-num">{format(d.date, 'M/d/yy')}</span>
-                                                                <span className="hc-day-name">{format(d.date, 'EEEE')}</span>
+                                                            <th key={d.dateStr} className={`hc-date-th${today ? ' hc-today-col' : ''}${weekend ? ' hc-weekend-col' : ''}`}>
+                                                                <span className="hc-d">{format(d.date, 'd')}</span>
+                                                                <span className="hc-day">{format(d.date, 'EEE')}</span>
                                                             </th>
                                                         );
                                                     })}
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {/* HC counts group */}
-                                                <tr className="hc-row">
-                                                    <td className="hc-metric-label">Total HC</td>
-                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{totalHC}</td>)}
-                                                </tr>
-                                                <tr className="hc-row">
-                                                    <td className="hc-metric-label">Rostered HC</td>
-                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{d.rosteredHC}</td>)}
-                                                </tr>
-                                                <tr className="hc-row hc-row-last">
-                                                    <td className="hc-metric-label">Present HC</td>
-                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{d.presentHC}</td>)}
-                                                </tr>
-                                                {/* Absence breakdown group */}
-                                                <tr className="hc-row hc-group-start">
-                                                    <td className="hc-metric-label">WOFF</td>
-                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{d.woff || ''}</td>)}
-                                                </tr>
-                                                <tr className="hc-row">
-                                                    <td className="hc-metric-label">PL</td>
-                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{d.pl || ''}</td>)}
-                                                </tr>
-                                                <tr className="hc-row hc-row-last">
-                                                    <td className="hc-metric-label">WL</td>
-                                                    {dailyData.map(d => <td key={d.dateStr} className={`hc-td${d.dateStr === todayStr ? ' hc-today' : ''}${isWeekend(d.date) ? ' hc-weekend' : ''}`}>{d.wl || ''}</td>)}
-                                                </tr>
-                                                {/* Shrinkage group */}
                                                 {[
-                                                    { label: 'Shrinkage - Overall', key: 'shrinkageOverall', first: true },
+                                                    { label: 'Total HC', get: () => totalHC, group: 'cap' },
+                                                    { label: 'Rostered HC', get: (d) => d.rosteredHC, group: 'cap' },
+                                                    { label: 'Present HC', get: (d) => d.presentHC, group: 'cap' },
+                                                    { label: 'WOFF', get: (d) => d.woff || '', group: 'abs' },
+                                                    { label: 'PL', get: (d) => d.pl || '', group: 'abs' },
+                                                    { label: 'WL', get: (d) => d.wl || '', group: 'abs' },
+                                                ].map(({ label, get, group }, i, arr) => (
+                                                    <tr key={label} className={i > 0 && arr[i - 1].group !== group ? 'hc-group-first' : ''}>
+                                                        <td className={`hc-label hc-g-${group}`}>{label}</td>
+                                                        {dailyData.map(d => <td key={d.dateStr} className={cls(d)}>{get(d)}</td>)}
+                                                    </tr>
+                                                ))}
+                                                {[
+                                                    { label: 'Shrinkage - Overall', key: 'shrinkageOverall' },
                                                     { label: 'Shrinkage - Planned', key: 'shrinkagePlanned' },
                                                     { label: 'Shrinkage - Unplanned (WL)', key: 'shrinkageUnplanned' },
-                                                ].map(({ label, key, first }) => (
-                                                    <tr key={key} className={`hc-row hc-shrinkage-row${first ? ' hc-group-start' : ''}`}>
-                                                        <td className="hc-metric-label hc-shrinkage-label">{label}</td>
+                                                ].map(({ label, key }, i) => (
+                                                    <tr key={key} className={i === 0 ? 'hc-group-first' : ''}>
+                                                        <td className="hc-label hc-g-shr">{label}</td>
                                                         {dailyData.map(d => {
-                                                            const weekend = isWeekend(d.date);
-                                                            const today = d.dateStr === todayStr;
-                                                            if (weekend) {
-                                                                return (
-                                                                    <td key={d.dateStr} className={`hc-td hc-shrink-weekend${today ? ' hc-today' : ''}`}>
-                                                                        Weekend
-                                                                    </td>
-                                                                );
-                                                            }
-                                                            return (
-                                                                <td key={d.dateStr} className={`hc-td hc-shrink-cell ${getShrinkageCellClass(d[key])}${today ? ' hc-today' : ''}`}>
-                                                                    {d[key].toFixed(2)}%
-                                                                </td>
-                                                            );
+                                                            if (isWeekend(d.date)) return <td key={d.dateStr} className="hc-td hc-weekend-col hc-v-wknd">-</td>;
+                                                            const v = d[key];
+                                                            return <td key={d.dateStr} className={`hc-td ${getShrinkageCellClass(v)}${d.dateStr === todayStr ? ' hc-today-col' : ''}`}>{v.toFixed(2)}%</td>;
                                                         })}
                                                     </tr>
                                                 ))}
