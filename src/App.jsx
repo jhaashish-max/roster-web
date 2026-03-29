@@ -372,7 +372,7 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="stats-hero-grid">
             <div className="stat-card hero-working">
-              <span className="hero-icon">⚙️</span>
+              <span className="hero-icon">👨‍💻</span>
               <h3>Working</h3>
               <div className="stat-value">{stats.working}</div>
             </div>
