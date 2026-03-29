@@ -371,34 +371,41 @@ const Dashboard = ({ rosterData, currentDate, onChangeDate, loading, headerActio
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="stats-hero-grid">
-            <div className="stat-card">
+            <div className="stat-card hero-working">
+              <span className="hero-icon">⚙️</span>
               <h3>Working</h3>
               <div className="stat-value">{stats.working}</div>
             </div>
-            <div className="stat-card">
-              <h3>Morning</h3>
-              <div className="stat-value" style={{ color: 'var(--morning-text)' }}>{stats.morning}</div>
+            <div className="stat-card hero-morning">
+              <span className="hero-icon">☀️</span>
+              <h3>Morning Shift</h3>
+              <div className="stat-value">{stats.morning}</div>
             </div>
-            <div className="stat-card">
-              <h3>Afternoon</h3>
-              <div className="stat-value" style={{ color: 'var(--afternoon-text)' }}>{stats.afternoon}</div>
+            <div className="stat-card hero-afternoon">
+              <span className="hero-icon">⛅</span>
+              <h3>Afternoon Shift</h3>
+              <div className="stat-value">{stats.afternoon}</div>
             </div>
-            <div className="stat-card">
-              <h3>Night</h3>
-              <div className="stat-value" style={{ color: '#475569' }}>{stats.night}</div>
+            <div className="stat-card hero-night">
+              <span className="hero-icon">🌙</span>
+              <h3>Night Shift</h3>
+              <div className="stat-value">{stats.night}</div>
             </div>
-            <div className="stat-card">
+            <div className="stat-card hero-leave">
+              <span className="hero-icon">🧳</span>
               <h3>Leave</h3>
-              <div className="stat-value" style={{ color: 'var(--text-muted)' }}>{stats.leave}</div>
+              <div className="stat-value">{stats.leave}</div>
             </div>
-            <div className="stat-card">
-              <h3>WO</h3>
-              <div className="stat-value" style={{ color: 'var(--leave-text)' }}>{stats.wo}</div>
+            <div className="stat-card hero-wo">
+              <span className="hero-icon">🏖️</span>
+              <h3>Weekly Off</h3>
+              <div className="stat-value">{stats.wo}</div>
             </div>
             {stats.wl > 0 && (
-              <div className="stat-card">
-                <h3>WL</h3>
-                <div className="stat-value" style={{ color: '#f59e0b' }}>{stats.wl}</div>
+              <div className="stat-card hero-wl">
+                <span className="hero-icon">🤒</span>
+                <h3>Wellness Leave</h3>
+                <div className="stat-value">{stats.wl}</div>
               </div>
             )}
           </div>

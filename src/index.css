@@ -477,6 +477,64 @@ body {
   color: var(--text-primary);
 }
 
+/* Hero card icon */
+.hero-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+/* Individual card themes */
+.hero-working {
+  background: linear-gradient(135deg, #334155, #475569);
+  border-color: #475569;
+}
+.hero-working h3 { color: #94a3b8; }
+.hero-working .stat-value { color: #fff; }
+.hero-working .hero-icon { filter: grayscale(0.3); }
+
+.hero-morning {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border-color: #86efac;
+}
+.hero-morning h3 { color: #166534; }
+.hero-morning .stat-value { color: #14532d; }
+
+.hero-afternoon {
+  background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+  border-color: #a5b4fc;
+}
+.hero-afternoon h3 { color: #3730a3; }
+.hero-afternoon .stat-value { color: #312e81; }
+
+.hero-night {
+  background: linear-gradient(135deg, #4338ca, #6366f1);
+  border-color: #6366f1;
+}
+.hero-night h3 { color: #c7d2fe; }
+.hero-night .stat-value { color: #fff; }
+
+.hero-leave {
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  border-color: #cbd5e1;
+}
+.hero-leave h3 { color: #64748b; }
+.hero-leave .stat-value { color: #334155; }
+
+.hero-wo {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-color: #fbbf24;
+}
+.hero-wo h3 { color: #92400e; }
+.hero-wo .stat-value { color: #78350f; }
+
+.hero-wl {
+  background: linear-gradient(135deg, #ffe4e6, #fecdd3);
+  border-color: #fda4af;
+}
+.hero-wl h3 { color: #9f1239; }
+.hero-wl .stat-value { color: #881337; }
+
 .clock-date {
   font-size: 0.85rem;
   color: var(--text-muted);
