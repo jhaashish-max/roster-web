@@ -1617,9 +1617,28 @@ const AutoEnablementPage = () => {
     const name = newMemberName.trim();
     if (!name || !selectedTeamId) return;
 
+    const selectedTeam = teams.find(t => t.id === selectedTeamId);
+    const alreadyInTeam = selectedTeam?.members.includes(name);
+
+    // If the member is already in this team, don't silently no-op —
+    // surface it so the user understands why nothing was added. This is
+    // the common case right after a member is moved between teams: their
+    // membership moved but their email/auto-bucket config didn't follow,
+    // so the row looks empty and "Add" appears broken.
+    if (alreadyInTeam) {
+      // Make sure they at least have a config entry to edit, even if the
+      // backend row is missing/stale from a prior team move.
+      setMemberEmails(prev => prev[name] ? prev : {
+        ...prev,
+        [name]: { name, email: '', auto_enable_bucket: true, contact_number: '' }
+      });
+      setToast({ message: `${name} is already in ${selectedTeam.name}. Edit their config below and Save.`, type: 'info' });
+      setNewMemberName('');
+      return;
+    }
+
     setTeams(prevTeams => prevTeams.map(t => {
       if (t.id === selectedTeamId) {
-        if (t.members.includes(name)) return t;
         return { ...t, members: [...t.members, name] };
       }
       return t;
