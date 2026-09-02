@@ -50,7 +50,7 @@
   /* Pastel status palette (fill / text) */
   --c-morning-bg: #d9f2e3;   --c-morning-fg: #14532d;
   --c-afternoon-bg: #dbe7fb; --c-afternoon-fg: #1e3a8a;
-  --c-night-bg: #e6dcfa;     --c-night-fg: #3b2a86;
+  --c-night-bg: #cfc8f5;     --c-night-fg: #2e1f7a;
   --c-oncall-bg: #fde2c8;    --c-oncall-fg: #7c2d12;
   --c-pl-bg: #fdf0b8;        --c-pl-fg: #713f12;
   --c-sl-bg: #fcd9c4;        --c-sl-fg: #7c2d12;
@@ -58,8 +58,8 @@
   --c-wo-bg: #ffe6b3;        --c-wo-fg: #78350f;
   --c-wl-bg: #fbd5d5;        --c-wl-fg: #881337;
   --c-wfh-bg: #cdf1ef;       --c-wfh-fg: #134e4a;
-  --c-oh-bg: #eadcf7;        --c-oh-fg: #581c87;
-  --c-holiday-bg: #dfe3fb;   --c-holiday-fg: #312e81;
+  --c-oh-bg: #ecd9f7;        --c-oh-fg: #6b21a8;
+  --c-holiday-bg: #f6d3ec;   --c-holiday-fg: #86198f;
   --c-available-bg: #e3f0d8; --c-available-fg: #365314;
   --c-exit-bg: #eceff3;      --c-exit-fg: #64748b;
   --c-other-bg: #f1f5f9;     --c-other-fg: #475569;
@@ -111,7 +111,7 @@ html[data-theme="dark"] {
 
   --c-morning-bg: color-mix(in srgb, #86efac 22%, var(--bg-card));   --c-morning-fg: #d9f2e3;
   --c-afternoon-bg: color-mix(in srgb, #93c5fd 22%, var(--bg-card)); --c-afternoon-fg: #dbe7fb;
-  --c-night-bg: color-mix(in srgb, #c4b5fd 22%, var(--bg-card));     --c-night-fg: #e6dcfa;
+  --c-night-bg: color-mix(in srgb, #a78bfa 30%, var(--bg-card));     --c-night-fg: #ddd6fe;
   --c-oncall-bg: color-mix(in srgb, #fdba74 22%, var(--bg-card));    --c-oncall-fg: #fde2c8;
   --c-pl-bg: color-mix(in srgb, #fde047 22%, var(--bg-card));        --c-pl-fg: #fdf0b8;
   --c-sl-bg: color-mix(in srgb, #fdba74 22%, var(--bg-card));        --c-sl-fg: #fcd9c4;
@@ -120,7 +120,7 @@ html[data-theme="dark"] {
   --c-wl-bg: color-mix(in srgb, #fda4af 22%, var(--bg-card));        --c-wl-fg: #fbd5d5;
   --c-wfh-bg: color-mix(in srgb, #5eead4 22%, var(--bg-card));       --c-wfh-fg: #cdf1ef;
   --c-oh-bg: color-mix(in srgb, #d8b4fe 22%, var(--bg-card));        --c-oh-fg: #eadcf7;
-  --c-holiday-bg: color-mix(in srgb, #a5b4fc 22%, var(--bg-card));   --c-holiday-fg: #dfe3fb;
+  --c-holiday-bg: color-mix(in srgb, #f0abfc 24%, var(--bg-card));   --c-holiday-fg: #f5d0fe;
   --c-available-bg: color-mix(in srgb, #bef264 22%, var(--bg-card)); --c-available-fg: #e3f0d8;
   --c-exit-bg: color-mix(in srgb, #94a3b8 16%, var(--bg-card));      --c-exit-fg: #9aa4b5;
   --c-other-bg: color-mix(in srgb, #94a3b8 12%, var(--bg-card));     --c-other-fg: #cbd5e1;

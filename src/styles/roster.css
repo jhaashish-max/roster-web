@@ -37,23 +37,27 @@ tr.is-selected .roster-cell { box-shadow: inset 0 0 0 100px color-mix(in srgb, v
 .row-menu-item:hover { background: var(--bg-hover); }
 
 /* Cells */
-.roster-cell { min-width: 64px; height: 36px; background: var(--k-bg); color: var(--k-fg); transition: box-shadow 0.1s; position: relative; }
-.roster-cell.is-weekend.kind-empty { background: var(--weekend-bg); }
-.roster-cell.is-today.kind-empty { background: var(--today-bg); }
+.roster-cell { min-width: 64px; height: 36px; background: transparent; color: var(--k-fg); transition: box-shadow 0.1s; position: relative; }
+.roster-cell.is-weekend { background: var(--weekend-bg); }
+.roster-cell.is-today { background: var(--today-bg); }
 .roster-cell.is-editable { cursor: cell; }
 .roster-cell.is-editable:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
 .roster-cell.is-selected { box-shadow: inset 0 0 0 2px var(--accent-primary); z-index: 2; }
 .roster-cell.is-editing { z-index: 30; overflow: visible; }
-.roster-cell .cell-text { display: inline-block; padding: 0.25rem 0.45rem; font-weight: 600; font-size: 0.74rem; letter-spacing: 0.005em; }
-.roster-cell.kind-empty .cell-text { color: var(--text-muted); font-weight: 400; }
+/* Each status is a rounded, softly shadowed pill inside the cell */
+.roster-cell .cell-text { display: flex; align-items: center; justify-content: center; margin: 3px; min-height: 28px; padding: 0 0.4rem; border-radius: 7px; background: var(--k-bg); color: var(--k-fg); font-weight: 600; font-size: 0.74rem; letter-spacing: 0.005em; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.10), 0 0 0 1px color-mix(in srgb, var(--k-fg) 9%, transparent); }
+.roster-cell.kind-empty .cell-text { background: transparent; box-shadow: none; color: var(--text-muted); font-weight: 400; }
+html[data-theme="dark"] .roster-cell .cell-text { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 1px color-mix(in srgb, var(--k-fg) 14%, transparent); }
 .roster-cell.kind-exit .cell-text, .roster-cell.kind-na .cell-text { font-style: italic; font-weight: 500; }
 .roster-cell.kind-other .cell-text { font-weight: 500; }
 
 /* Inline cell editor */
-.cell-editor { position: absolute; top: 0; left: 0; min-width: 230px; background: var(--bg-card); border: 1px solid var(--accent-primary); border-radius: var(--radius-md); box-shadow: var(--shadow-dropdown); text-align: left; z-index: 40; }
+.cell-editor-anchor { position: absolute; inset: 0; pointer-events: none; }
+.cell-editor { min-width: 230px; background: var(--bg-card); border: 1px solid var(--accent-primary); border-radius: var(--radius-md); box-shadow: var(--shadow-dropdown); text-align: left; z-index: 40; }
 .cell-editor-input { width: 100%; border: none; border-bottom: 1px solid var(--border-color); background: transparent; padding: 0.5rem 0.7rem; font-size: 0.84rem; font-weight: 600; outline: none; border-radius: var(--radius-md) var(--radius-md) 0 0; }
 .cell-editor-preview { padding: 0.35rem 0.7rem; font-size: 0.72rem; font-weight: 600; background: var(--k-bg); color: var(--k-fg); border-bottom: 1px solid var(--border-light); }
 .cell-editor-preview.kind-empty { background: var(--bg-sunken); color: var(--text-muted); }
+.cell-editor-preview.is-hint { font-weight: 500; }
 .cell-editor-list { list-style: none; max-height: 260px; overflow-y: auto; padding: 0.25rem 0; }
 .cell-editor-group { padding: 0.35rem 0.7rem 0.15rem; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
 .cell-editor-option { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.4rem 0.7rem; background: none; border: none; font-size: 0.8rem; text-align: left; font-weight: 500; }
@@ -61,3 +65,5 @@ tr.is-selected .roster-cell { box-shadow: inset 0 0 0 100px color-mix(in srgb, v
 .cell-editor-empty { padding: 0.5rem 0.7rem; font-size: 0.76rem; color: var(--text-muted); }
 
 @media (max-width: 1400px) { .roster-cell { min-width: 58px; } }
+
+.hidden-teams-note { padding: 0.25rem 0.5rem 0; }

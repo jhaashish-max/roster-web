@@ -233,6 +233,7 @@ export default function AuthenticatedApp({ onLogout }) {
                             onOpenDelete={() => setShowDelete(true)}
                             onMoveMember={(name, team) => setMoveTarget({ name, team })}
                             headerAction={headerFilter}
+                            selectedTeams={selectedTeams}
                         />
                     )}
                     {view === 'summary' && (

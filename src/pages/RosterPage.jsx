@@ -9,7 +9,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { monthDays, monthLabel, todayISO } from '../lib/dates';
 import { buildGroups } from '../lib/groups';
 
-export default function RosterPage({ rows, loading, currentDate, onChangeDate, isAdmin, teams, features, shiftConfigs = [], currentUser, onCellUpdate, onOpenGenerator, onOpenDelete, onMoveMember, headerAction }) {
+export default function RosterPage({ rows, loading, currentDate, onChangeDate, isAdmin, teams, features, shiftConfigs = [], currentUser, onCellUpdate, onOpenGenerator, onOpenDelete, onMoveMember, headerAction, selectedTeams = [] }) {
     const [zoom, setZoom] = useLocalStorage('roster_zoom', 1);
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth() + 1;
@@ -19,7 +19,14 @@ export default function RosterPage({ rows, loading, currentDate, onChangeDate, i
         return monthDays(year, month).map((d) => ({ ...d, isToday: d.iso === today }));
     }, [year, month]);
 
-    const groups = useMemo(() => buildGroups(rows, teams), [rows, teams]);
+    // "All teams" hides teams that have no roster this month; an explicit selection shows them with "Not set" rows.
+    const showEmptyTeams = selectedTeams.length > 0;
+    const groups = useMemo(() => buildGroups(rows, teams, { showEmptyTeams, onlyTeams: selectedTeams }), [rows, teams, showEmptyTeams, selectedTeams]);
+    const hiddenTeams = useMemo(() => {
+        if (showEmptyTeams) return [];
+        const withRows = new Set(rows.map((r) => r.Team));
+        return teams.filter((t) => !t.archived && !withRows.has(t.name)).map((t) => t.name);
+    }, [rows, teams, showEmptyTeams]);
 
     const shiftOptionsByTeam = useMemo(() => {
         const out = {};
@@ -71,15 +78,22 @@ export default function RosterPage({ rows, loading, currentDate, onChangeDate, i
                     <p>Generate a new roster for {monthLabel(year, month)}{isAdmin ? ' or start filling cells once a team is created' : ''}.</p>
                 </div>
             ) : (
-                <RosterGrid
-                    groups={groups}
-                    days={days}
-                    isAdmin={isAdmin}
-                    zoom={zoom}
-                    shiftOptionsByTeam={shiftOptionsByTeam}
-                    onCellUpdate={onCellUpdate}
-                    onMoveMember={features?.moveMember ? onMoveMember : undefined}
-                />
+                <>
+                    <RosterGrid
+                        groups={groups}
+                        days={days}
+                        isAdmin={isAdmin}
+                        zoom={zoom}
+                        shiftOptionsByTeam={shiftOptionsByTeam}
+                        onCellUpdate={onCellUpdate}
+                        onMoveMember={features?.moveMember ? onMoveMember : undefined}
+                    />
+                    {hiddenTeams.length > 0 && (
+                        <p className="muted small hidden-teams-note">
+                            No roster for {monthLabel(year, month)} yet: {hiddenTeams.join(', ')}. Pick a team from the filter to fill it in.
+                        </p>
+                    )}
+                </>
             )}
         </div>
     );
