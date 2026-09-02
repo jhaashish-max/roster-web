@@ -66,7 +66,7 @@ export default function RosterPage({ rows, loading, currentDate, onChangeDate, i
 
             <div className="card legend-card">
                 <Legend />
-                {isAdmin && <span className="muted small legend-hint">Click a cell and press Enter to edit · Delete clears · arrows move</span>}
+                {isAdmin && <span className="muted small legend-hint">Click a cell to pick a status · Delete clears · arrow keys move · Esc cancels</span>}
             </div>
 
             {loading ? (

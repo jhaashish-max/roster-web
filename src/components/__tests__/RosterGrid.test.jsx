@@ -29,12 +29,15 @@ describe('RosterGrid', () => {
         expect(newbieRow.textContent).toContain('Newbie');
         const newbieCell = newbieRow.querySelector('td[data-date="2026-09-02"]');
         fireEvent.click(newbieCell);
+        // a click opens the picker for admins; cancel it, then clear with Delete
+        fireEvent.keyDown(screen.getByLabelText('Cell status'), { key: 'Escape' });
         fireEvent.keyDown(grid, { key: 'Delete' });
         expect(onCellUpdate).toHaveBeenLastCalledWith('2026-09-02', 'Newbie', '', 'TS - POS');
 
         // Ayush exists in both teams: editing the POS row must target TS - POS, not the first match.
         const ayushPosCell = posSection.querySelector('tbody tr:nth-child(1) td[data-date="2026-09-01"]');
         fireEvent.click(ayushPosCell);
+        fireEvent.keyDown(screen.getByLabelText('Cell status'), { key: 'Escape' });
         fireEvent.keyDown(grid, { key: 'Delete' });
         expect(onCellUpdate).toHaveBeenLastCalledWith('2026-09-01', 'Ayush', '', 'TS - POS');
     });

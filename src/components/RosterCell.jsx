@@ -9,8 +9,8 @@ function RosterCellImpl({ status, day, isAdmin, selected, editing, teamShifts, o
     return (
         <td
             className={cx('roster-cell', `kind-${n.kind}`, n.period && `period-${n.period}`, day.weekend && 'is-weekend', day.isToday && 'is-today', selected && 'is-selected', editing && 'is-editing', isAdmin && 'is-editable')}
-            onClick={(e) => { e.stopPropagation(); onSelect(); }}
-            onDoubleClick={(e) => { e.stopPropagation(); if (isAdmin) onOpen(); }}
+            onClick={(e) => { e.stopPropagation(); onSelect(); if (isAdmin && !editing) onOpen(); }}
+            onDoubleClick={(e) => { e.stopPropagation(); }}
             title={status && status !== n.value ? `Stored as "${status}"` : undefined}
             data-date={day.iso}
         >

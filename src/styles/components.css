@@ -272,3 +272,8 @@ html[data-theme="dark"] .segmented-btn.active { color: #0b1220; }
 .steps code { font-family: var(--font-mono); font-size: 0.78rem; background: var(--bg-sunken); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.05rem 0.35rem; color: var(--text-primary); }
 .prompt-examples { margin-top: 0.4rem; }
 .prompt-examples .list-row { align-items: flex-start; }
+
+/* Hover name under each presence avatar (instant, unlike the native title tooltip) */
+.presence-avatar { position: relative; }
+.presence-avatar[data-name]::after { content: attr(data-name); position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%) translateY(-2px); background: var(--text-primary); color: var(--bg-card); font-size: 0.7rem; font-weight: 600; padding: 0.25rem 0.5rem; border-radius: 6px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.12s, transform 0.12s; z-index: 120; }
+.presence-avatar[data-name]:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }

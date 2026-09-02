@@ -83,6 +83,7 @@ export default function LivePresence({ currentUser, showCount = true }) {
                         className={`avatar avatar-sm presence-avatar${isIdle(u) ? ' is-idle' : ''}`}
                         style={{ background: getAvatarColor(u.name), zIndex: 10 - i }}
                         title={`${u.name}${isIdle(u) ? ' (away)' : ''}`}
+                        data-name={`${u.name}${isIdle(u) ? ' (away)' : ''}`}
                         aria-label={`${u.name}${isIdle(u) ? ', away' : ', online'}`}
                     >
                         {initials(u.name)}
