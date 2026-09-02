@@ -1,136 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { getToken } from '../lib/api';
+import { getFreshdeskAvailability, toggleFreshdeskAvailability } from '../lib/api';
 
-const AgentAvailability = ({ email, isAutoEnableOn, onShowToast }) => {
-    const [status, setStatus] = useState('loading'); // 'loading', 'available', 'unavailable', 'error', 'toggling'
+/** Live Freshdesk availability of one agent with a manual toggle (blocked while auto-enable is on). */
+export default function AgentAvailability({ email, isAutoEnableOn, onShowToast }) {
+    const [status, setStatus] = useState(email ? 'loading' : 'error');
 
-    const fetchStatus = async () => {
+    const fetchStatus = useCallback(async () => {
+        if (!email) return;
         try {
-            const API_BASE = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-            const token = getToken();
-            const response = await fetch(`${API_BASE}/api/freshdesk/availability?email=${encodeURIComponent(email)}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Network response was not ok');
-            const data = await response.json();
+            const data = await getFreshdeskAvailability(email);
             setStatus(data.available ? 'available' : 'unavailable');
-        } catch (error) {
-            console.error("Error fetching agent availability:", error);
+        } catch {
             setStatus('error');
         }
-    };
+    }, [email]);
 
     useEffect(() => {
-        if (!email) {
-            setStatus('error');
-            return;
-        }
-        fetchStatus();
-        const interval = setInterval(fetchStatus, 60000); // Poll every 60s
-        return () => clearInterval(interval);
-    }, [email]);
+        if (!email) return undefined;
+        const initial = setTimeout(fetchStatus, 0);
+        const interval = setInterval(fetchStatus, 60_000);
+        return () => { clearTimeout(initial); clearInterval(interval); };
+    }, [email, fetchStatus]);
 
     const handleToggle = async () => {
         if (isAutoEnableOn) {
-            if (onShowToast) {
-                onShowToast({
-                    message: "Please uncheck 'Auto Enable' and click 'Save Configurations' first.",
-                    type: 'error'
-                });
-            }
+            onShowToast?.({ message: "Uncheck 'Auto enable' and save first to control availability manually.", type: 'error' });
             return;
         }
-
-        if (status === 'loading' || status === 'toggling') return;
-
-        const currentAvailable = status === 'available';
-        const action = currentAvailable ? 'disable' : 'enable';
-
+        if (status === 'loading' || status === 'toggling' || status === 'error') return;
+        const action = status === 'available' ? 'disable' : 'enable';
         setStatus('toggling');
-
         try {
-            const API_BASE = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-            const TOGGLE_URL = `${API_BASE}/api/freshdesk/availability/toggle`;
-            const token = getToken();
-
-            const response = await fetch(TOGGLE_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ email, action })
-            });
-
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.error || `Server responded with ${response.status}`);
-            }
-
-            // Immediately switch local state to feel fast and responsive
-            setStatus(currentAvailable ? 'unavailable' : 'available');
-
-        } catch (error) {
-            console.error("Error toggling agent availability:", error);
-            if (onShowToast) {
-                onShowToast({ message: `Failed to toggle availability: ${error.message}`, type: 'error' });
-            }
-            // Re-fetch to get accurate state
+            await toggleFreshdeskAvailability(email, action);
+            setStatus(action === 'enable' ? 'available' : 'unavailable');
+        } catch (err) {
+            onShowToast?.({ message: `Failed to toggle availability: ${err.message}`, type: 'error' });
             await fetchStatus();
         }
     };
 
+    if (!email || status === 'error') {
+        return <span className="muted" title="No e-mail or Freshdesk lookup failed">–</span>;
+    }
     if (status === 'loading' || status === 'toggling') {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                <Loader2 size={16} className="lucide-spin" style={{ animation: 'spin 1s linear infinite' }} />
-                <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-            </div>
-        );
+        return <Loader2 size={16} className="spin muted" aria-label="Loading availability" />;
     }
-
-    const clickStyle = {
-        cursor: isAutoEnableOn ? 'not-allowed' : 'pointer',
-        display: 'flex',
-        justifyContent: 'center',
-        transition: 'transform 0.1s ease-in-out',
-        opacity: isAutoEnableOn ? 0.6 : 1
-    };
-
-    if (status === 'available') {
-        return (
-            <div
-                style={{ ...clickStyle, color: 'var(--accent-success)' }}
-                title={isAutoEnableOn ? "Auto-Enabled (Cannot manual toggle)" : "Click to Disable Agent"}
-                onClick={handleToggle}
-                onMouseEnter={(e) => !isAutoEnableOn && (e.currentTarget.style.transform = 'scale(1.15)')}
-                onMouseLeave={(e) => !isAutoEnableOn && (e.currentTarget.style.transform = 'scale(1)')}
-            >
-                <CheckCircle size={18} />
-            </div>
-        );
-    }
-
-    if (status === 'unavailable') {
-        return (
-            <div
-                style={{ ...clickStyle, color: 'var(--accent-danger)' }}
-                title={isAutoEnableOn ? "Auto-Enabled (Cannot manual toggle)" : "Click to Enable Agent"}
-                onClick={handleToggle}
-                onMouseEnter={(e) => !isAutoEnableOn && (e.currentTarget.style.transform = 'scale(1.15)')}
-                onMouseLeave={(e) => !isAutoEnableOn && (e.currentTarget.style.transform = 'scale(1)')}
-            >
-                <XCircle size={18} />
-            </div>
-        );
-    }
-
+    const available = status === 'available';
     return (
-        <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }} title="No Email or Error">
-            <span style={{ fontSize: '1rem', fontWeight: 600 }}>-</span>
-        </div>
+        <button
+            type="button"
+            className={`icon-btn availability-btn ${available ? 'is-available' : 'is-unavailable'}`}
+            onClick={handleToggle}
+            disabled={isAutoEnableOn}
+            title={isAutoEnableOn ? 'Auto-enabled (manual toggle disabled)' : available ? 'Available — click to disable' : 'Unavailable — click to enable'}
+            aria-label={available ? 'Agent available' : 'Agent unavailable'}
+        >
+            {available ? <CheckCircle size={18} /> : <XCircle size={18} />}
+        </button>
     );
-};
-
-export default AgentAvailability;
+}

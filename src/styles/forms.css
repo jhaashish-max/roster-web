@@ -1,0 +1,72 @@
+.field { display: flex; flex-direction: column; gap: 0.35rem; }
+.field-narrow { max-width: 320px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.field-label { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
+.field-error { font-size: 0.75rem; color: var(--accent-danger); margin-top: 0.2rem; }
+
+.input {
+  width: 100%; padding: 0.55rem 0.75rem;
+  background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  color: var(--text-primary); font-size: 0.88rem; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 3px var(--accent-soft); }
+.input.is-invalid { border-color: var(--accent-danger); }
+.input.is-placeholder { color: var(--text-muted); background: var(--bg-hover); }
+.input-num { width: 76px; text-align: center; padding: 0.4rem; }
+.input-date { width: auto; }
+.input-inline { padding: 0.2rem 0.4rem; font-size: 0.78rem; width: 120px; }
+textarea.input { resize: vertical; line-height: 1.5; }
+select.input { cursor: pointer; }
+input[type="date"] { color-scheme: inherit; }
+input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent-primary); cursor: pointer; }
+
+.inline-form { display: flex; gap: 0.5rem; align-items: center; }
+.inline-form .input { flex: 1; }
+.form-card { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+.form-actions { display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
+.checkbox-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; cursor: pointer; }
+.checkbox-card { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.9rem 1rem; background: var(--bg-hover); border: 1px solid var(--border-color); border-radius: var(--radius-md); cursor: pointer; }
+.checkbox-card input { margin-top: 3px; }
+
+/* Member editor */
+.member-editor { display: flex; flex-direction: column; gap: 0.6rem; }
+.member-editor-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.member-editor-actions { display: flex; gap: 0.4rem; }
+.member-paste { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; background: var(--bg-sunken); border: 1px dashed var(--border-strong); border-radius: var(--radius-md); }
+.member-paste-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+.member-rows { display: flex; flex-direction: column; gap: 0.4rem; }
+.member-row { display: flex; flex-direction: column; gap: 0.2rem; }
+.member-row-fields { display: grid; grid-template-columns: 1fr 1.2fr auto auto; gap: 0.4rem; align-items: center; }
+.member-row.has-error .member-row-fields { padding-left: 0.5rem; border-left: 3px solid var(--accent-danger); }
+.member-empty { padding: 0.5rem 0; }
+
+/* Prompt editor */
+.prompt-editor { display: flex; flex-direction: column; gap: 0.5rem; }
+.prompt-editor.is-fullscreen { position: fixed; inset: 0; z-index: 400; background: var(--bg-primary); padding: 1.5rem; }
+.prompt-editor.is-fullscreen .prompt-textarea { flex: 1; min-height: 0; }
+
+/* Teams page */
+.teams-list { display: flex; flex-direction: column; overflow: hidden; }
+.teams-items { list-style: none; padding: 0.5rem; display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow-y: auto; }
+.team-item { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.65rem 0.9rem; background: transparent; border: 1px solid transparent; border-radius: var(--radius-md); text-align: left; position: relative; }
+.team-item::before { content: ''; position: absolute; left: 0; top: 18%; bottom: 18%; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent-primary); opacity: 0; }
+.team-item:hover { background: var(--bg-hover); }
+.team-item.active { background: var(--accent-soft); border-color: transparent; }
+.team-item.active::before { opacity: 1; }
+.team-item.active .team-item-name { color: var(--accent-primary); }
+.team-item.is-archived .team-item-name { color: var(--text-muted); }
+.team-item-name { font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; }
+.team-form { padding: 1.5rem; min-height: 420px; }
+.team-form h3 { font-size: 1.05rem; font-weight: 600; }
+
+/* Auto bucket */
+.member-cell { display: flex; align-items: center; gap: 0.5rem; }
+.contact-edit { display: inline-flex; align-items: center; gap: 0.3rem; background: var(--bg-secondary); border: 1px solid var(--accent-primary); border-radius: 20px; padding: 2px 8px; color: var(--accent-primary); }
+.add-member-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.add-member-bar .inline-form { flex: 1; max-width: 520px; }
+.hint { display: inline-flex; align-items: center; gap: 0.35rem; }
+
+@media (max-width: 768px) {
+  .field-row { grid-template-columns: 1fr; }
+  .member-row-fields { grid-template-columns: 1fr 1fr auto auto; }
+}

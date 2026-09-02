@@ -1,0 +1,16 @@
+{
+ "name": "roster-manager",
+ "version": "2.0.0",
+ "files": [
+  "roster-manager/.gitignore",
+  "roster-manager/assets/zscaler-root.crt",
+  "roster-manager/README.md",
+  "roster-manager/references/architecture.md",
+  "roster-manager/references/credentials.example.md",
+  "roster-manager/references/default-prompt.md",
+  "roster-manager/references/holidays.md",
+  "roster-manager/scripts/roster_api.py",
+  "roster-manager/SKILL.md"
+ ],
+ "credentials_file": "roster-manager/references/credentials.md"
+}

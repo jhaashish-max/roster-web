@@ -1,116 +1,102 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Calendar, Table, PieChart, Settings, Moon, Sun, RefreshCw } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Search, Calendar, Table, PieChart, Settings, Moon, Sun, RefreshCw, FileText, CheckSquare, Clock } from 'lucide-react';
 
-const CommandPalette = ({ isOpen, onClose, onNavigate, onAction, darkMode }) => {
+export default function CommandPalette({ isOpen, onClose, onNavigate, onAction, darkMode, isAdmin, canReview }) {
     const [query, setQuery] = useState('');
     const [activeIndex, setActiveIndex] = useState(0);
     const inputRef = useRef(null);
     const listRef = useRef(null);
 
-    const commands = useMemo(() => [
-        { id: 'dashboard', label: 'Go to Dashboard', icon: Calendar, action: () => onNavigate('dashboard') },
-        { id: 'roster', label: 'Go to Roster View', icon: Table, action: () => onNavigate('roster') },
-        { id: 'summary', label: 'Go to Summary', icon: PieChart, action: () => onNavigate('summary') },
-        { id: 'settings', label: 'Go to Settings', icon: Settings, action: () => onNavigate('settings') },
-        { id: 'theme', label: darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode', icon: darkMode ? Sun : Moon, action: () => onAction('toggle-theme') },
-        { id: 'refresh', label: 'Refresh Data', icon: RefreshCw, action: () => onAction('refresh') },
-    ], [onNavigate, onAction, darkMode]);
+    const commands = useMemo(() => {
+        const list = [
+            { id: 'dashboard', label: 'Go to Overview', icon: Calendar, action: () => onNavigate('dashboard') },
+            { id: 'roster', label: 'Go to Roster', icon: Table, action: () => onNavigate('roster') },
+            { id: 'summary', label: 'Go to Reports', icon: PieChart, action: () => onNavigate('summary') },
+            { id: 'requests', label: 'Go to Requests', icon: FileText, action: () => onNavigate('requests') },
+        ];
+        if (canReview) list.push({ id: 'review', label: 'Go to Approvals', icon: CheckSquare, action: () => onNavigate('review') });
+        if (isAdmin) {
+            list.push({ id: 'auto-enablement', label: 'Go to Auto Bucket Mgmt', icon: Clock, action: () => onNavigate('auto-enablement') });
+            list.push({ id: 'team-settings', label: 'Go to Team Settings', icon: Settings, action: () => onNavigate('team-settings') });
+        }
+        list.push({ id: 'theme', label: darkMode ? 'Switch to light mode' : 'Switch to dark mode', icon: darkMode ? Sun : Moon, action: () => onAction('toggle-theme') });
+        list.push({ id: 'refresh', label: 'Refresh data', icon: RefreshCw, action: () => onAction('refresh') });
+        return list;
+    }, [onNavigate, onAction, darkMode, isAdmin, canReview]);
 
     const filtered = useMemo(() => {
-        if (!query) return commands;
-        return commands.filter(c =>
-            c.label.toLowerCase().includes(query.toLowerCase())
-        );
+        const qy = query.trim().toLowerCase();
+        return qy ? commands.filter((c) => c.label.toLowerCase().includes(qy)) : commands;
     }, [query, commands]);
 
-    // Reset active index when filtered results change
     useEffect(() => {
-        setActiveIndex(0);
-    }, [filtered]);
-
-    useEffect(() => {
-        if (isOpen && inputRef.current) {
-            inputRef.current.focus();
-            setQuery('');
-            setActiveIndex(0);
+        if (isOpen) {
+            const raf = requestAnimationFrame(() => inputRef.current?.focus());
+            return () => cancelAnimationFrame(raf);
         }
+        return undefined;
     }, [isOpen]);
 
-    // Scroll active item into view
     useEffect(() => {
-        if (listRef.current) {
-            const activeEl = listRef.current.querySelector('.command-item.active');
-            if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
-        }
+        const activeEl = listRef.current?.querySelector('.command-item.active');
+        activeEl?.scrollIntoView?.({ block: 'nearest' });
     }, [activeIndex]);
 
     useEffect(() => {
+        if (!isOpen) return undefined;
         const handleKeyDown = (e) => {
-            if (e.key === 'Escape') {
-                onClose();
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setActiveIndex(i => (i + 1) % filtered.length);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setActiveIndex(i => (i - 1 + filtered.length) % filtered.length);
-            } else if (e.key === 'Enter' && filtered.length > 0) {
-                filtered[activeIndex]?.action();
-                onClose();
-            }
+            if (e.key === 'Escape') onClose();
+            else if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex((i) => (filtered.length ? (i + 1) % filtered.length : 0)); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex((i) => (filtered.length ? (i - 1 + filtered.length) % filtered.length : 0)); }
+            else if (e.key === 'Enter' && filtered.length > 0) { filtered[Math.min(activeIndex, filtered.length - 1)]?.action(); onClose(); }
         };
-
-        if (isOpen) {
-            document.addEventListener('keydown', handleKeyDown);
-            return () => document.removeEventListener('keydown', handleKeyDown);
-        }
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, filtered, activeIndex, onClose]);
 
     if (!isOpen) return null;
+    const current = Math.min(activeIndex, Math.max(filtered.length - 1, 0));
 
     return (
-        <div className="command-overlay" onClick={onClose}>
-            <div className="command-palette" onClick={(e) => e.stopPropagation()}>
+        <div className="command-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
                 <div className="command-input-wrapper">
-                    <Search size={18} className="command-search-icon" />
+                    <Search size={18} className="muted" aria-hidden="true" />
                     <input
                         ref={inputRef}
                         type="text"
                         className="command-input"
-                        placeholder="Type a command..."
+                        placeholder="Type a command…"
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onChange={(e) => { setQuery(e.target.value); setActiveIndex(0); }}
+                        aria-label="Search commands"
                     />
-                    <kbd className="command-kbd">ESC</kbd>
+                    <kbd className="kbd">ESC</kbd>
                 </div>
-                <div className="command-list" ref={listRef}>
+                <div className="command-list" ref={listRef} role="listbox">
                     {filtered.length === 0 ? (
                         <div className="command-empty">No commands found</div>
-                    ) : (
-                        filtered.map((cmd, i) => (
-                            <button
-                                key={cmd.id}
-                                className={`command-item${i === activeIndex ? ' active' : ''}`}
-                                onMouseEnter={() => setActiveIndex(i)}
-                                onClick={() => {
-                                    cmd.action();
-                                    onClose();
-                                }}
-                            >
-                                <cmd.icon size={16} />
-                                <span>{cmd.label}</span>
-                            </button>
-                        ))
-                    )}
+                    ) : filtered.map((cmd, i) => (
+                        <button
+                            key={cmd.id}
+                            type="button"
+                            role="option"
+                            aria-selected={i === current}
+                            className={`command-item${i === current ? ' active' : ''}`}
+                            onMouseEnter={() => setActiveIndex(i)}
+                            onClick={() => { cmd.action(); onClose(); }}
+                        >
+                            <cmd.icon size={16} aria-hidden="true" />
+                            <span>{cmd.label}</span>
+                        </button>
+                    ))}
                 </div>
                 <div className="command-footer">
-                    <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
-                    <span><kbd>↵</kbd> select</span>
-                    <span><kbd>esc</kbd> close</span>
+                    <span><kbd className="kbd">↑</kbd><kbd className="kbd">↓</kbd> navigate</span>
+                    <span><kbd className="kbd">↵</kbd> select</span>
+                    <span><kbd className="kbd">esc</kbd> close</span>
                 </div>
             </div>
         </div>
     );
-};
-
-export default CommandPalette;
+}
