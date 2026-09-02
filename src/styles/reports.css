@@ -39,3 +39,21 @@
 .shrink-low { background: var(--shrink-low-bg) !important; color: var(--shrink-low-fg); font-weight: 700; }
 .shrink-mid { background: var(--shrink-mid-bg) !important; color: var(--shrink-mid-fg); font-weight: 700; }
 .shrink-high { background: var(--shrink-high-bg) !important; color: var(--shrink-high-fg); font-weight: 700; }
+
+/* Audit log */
+.audit-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem 1rem; padding: 1rem 1.25rem; align-items: end; }
+.audit-filters-foot { grid-column: 1 / -1; display: flex; justify-content: flex-end; min-height: 1rem; }
+.audit-table td { vertical-align: top; }
+.audit-when { white-space: nowrap; }
+.audit-actor { max-width: 220px; }
+.audit-actor .truncate { display: block; max-width: 220px; }
+.audit-service { margin-left: 0; }
+.audit-action { text-transform: none; }
+.audit-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.audit-change { min-width: 180px; }
+.audit-diff { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+.audit-details-row td { background: var(--bg-sunken); padding: 0.5rem 1rem 0.75rem; }
+.audit-meta { margin: 0; font-family: var(--font-mono); font-size: 0.74rem; line-height: 1.45; white-space: pre-wrap; word-break: break-word; color: var(--text-secondary); max-height: 260px; overflow: auto; }
+.audit-pager { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.audit-page-size { display: inline-flex; align-items: center; gap: 0.4rem; }
+.audit-page-size .input-num { width: 70px; padding: 0.3rem; }

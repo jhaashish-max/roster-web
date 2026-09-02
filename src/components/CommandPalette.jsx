@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Calendar, Table, PieChart, Settings, Moon, Sun, RefreshCw, FileText, CheckSquare, Clock } from 'lucide-react';
+import { Search, Calendar, Table, PieChart, Settings, Moon, Sun, RefreshCw, FileText, CheckSquare, Clock, History } from 'lucide-react';
 
 export default function CommandPalette({ isOpen, onClose, onNavigate, onAction, darkMode, isAdmin, canReview }) {
     const [query, setQuery] = useState('');
@@ -18,6 +18,7 @@ export default function CommandPalette({ isOpen, onClose, onNavigate, onAction, 
         if (isAdmin) {
             list.push({ id: 'auto-enablement', label: 'Go to Auto Bucket Mgmt', icon: Clock, action: () => onNavigate('auto-enablement') });
             list.push({ id: 'team-settings', label: 'Go to Team Settings', icon: Settings, action: () => onNavigate('team-settings') });
+            list.push({ id: 'audit', label: 'Go to Audit log', icon: History, action: () => onNavigate('audit') });
         }
         list.push({ id: 'theme', label: darkMode ? 'Switch to light mode' : 'Switch to dark mode', icon: darkMode ? Sun : Moon, action: () => onAction('toggle-theme') });
         list.push({ id: 'refresh', label: 'Refresh data', icon: RefreshCw, action: () => onAction('refresh') });

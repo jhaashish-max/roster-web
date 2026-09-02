@@ -314,4 +314,5 @@ export const postPresenceActivity = (name) => request('/api/pusher/activity', { 
 
 // ─────────────────────────── audit (v2) ───────────────────────────
 
-export const getAudit = (params = {}) => request(`/api/audit${q(params)}`);
+/** v2, admin only. Empty params are stripped by `q()`. → { entries, total, limit, offset, hasMore, actions } */
+export const getAudit = (params = {}) => request(`/api/audit${q(params)}`, { retry: false });

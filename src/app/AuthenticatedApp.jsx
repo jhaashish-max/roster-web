@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Calendar, CheckSquare, ChevronLeft, ChevronRight, Clock, FileText, LayoutGrid, LogOut, Moon, PieChart, PlusCircle, Settings, ShieldCheck, Sun, Users } from 'lucide-react';
+import { Calendar, CheckSquare, ChevronLeft, ChevronRight, Clock, FileText, History, LayoutGrid, LogOut, Moon, PieChart, PlusCircle, Settings, ShieldCheck, Sun, Users } from 'lucide-react';
 import Logo from '../components/Logo';
 import CommandPalette from '../components/CommandPalette';
 import TeamSelector from '../components/TeamSelector';
@@ -17,6 +17,7 @@ import RequestsPage from '../pages/RequestsPage';
 import ApprovalsPage from '../pages/ApprovalsPage';
 import AutoBucketPage from '../pages/AutoBucketPage';
 import TeamSettingsPage from '../pages/TeamSettingsPage';
+import AuditPage from '../pages/AuditPage';
 import { useFeatures } from '../hooks/useFeatures';
 import { useMe } from '../hooks/useMe';
 import { useTeams } from '../hooks/useTeams';
@@ -164,6 +165,7 @@ export default function AuthenticatedApp({ onLogout }) {
                     {me.isAdmin && navItem('review', 'Approvals', CheckSquare)}
                     {isAdmin && navItem('auto-enablement', 'Auto Bucket Mgmt', Clock)}
                     {isAdmin && navItem('team-settings', 'Team Settings', Settings)}
+                    {isAdmin && features.audit && navItem('audit', 'Audit log', History)}
                 </nav>
                 <div className="sidebar-footer">
                     {me.isAdmin && (
@@ -245,7 +247,8 @@ export default function AuthenticatedApp({ onLogout }) {
                     {view === 'team-settings' && isAdmin && (
                         <TeamSettingsPage teams={teams} teamsLoading={teamsLoading} reloadTeams={reloadTeams} features={features} onMoveMember={(name, team) => setMoveTarget({ name, team })} />
                     )}
-                    {((view === 'auto-enablement' || view === 'team-settings') && !isAdmin) && (
+                    {view === 'audit' && isAdmin && <AuditPage teams={teams} />}
+                    {((view === 'auto-enablement' || view === 'team-settings' || view === 'audit') && !isAdmin) && (
                         <div className="page"><div className="card empty-state-large"><ShieldCheck size={32} aria-hidden="true" /><p>Turn on admin mode to open this page.</p></div></div>
                     )}
                 </ErrorBoundary>
