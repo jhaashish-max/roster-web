@@ -1,16 +1,32 @@
-# React + Vite
+# Roster web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite front-end for the team roster. Deployed to GitHub Pages at
+`https://jhaashish-max.github.io/roster-web/` by the workflow in `.github/workflows/deploy.yml`.
 
-Currently, two official plugins are available:
+## Run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+npm install
+npm run dev        # http://localhost:5173/roster-web/
+npm run lint
+npm test
+npm run build
+```
 
-## React Compiler
+`VITE_API_BASE_URL` (see `.env.example`) points at the Cloudflare worker API. The app probes
+`GET /api/health` on start and feature-detects the API version, so it works against the v1 worker
+(legacy routes only) and the v2 worker (cell delete, move member, SSE generation, audit).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Layout
 
-## Expanding the ESLint configuration
+```
+src/app          App (auth gate) · AuthenticatedApp (shell, navigation, modals)
+src/pages        Overview · RosterPage · ReportsPage · RequestsPage · ApprovalsPage · AutoBucketPage · TeamSettingsPage
+src/components   UI building blocks (RosterGrid, CellEditor, Modal, dialogs, toast, …)
+src/hooks        useFeatures · useMe · useTeams · useRoster · useLocalStorage · useToast
+src/lib          api (typed client) · status (shared vocabulary) · headcount · members · dates · prompt
+src/styles       tokens (pastel palette, light + dark) · base · layout · components · roster · reports · forms
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+`src/lib/status.js` is a byte-identical copy of `docs/shared/status.js` in the repository root; the worker
+uses the same file so every status is normalised the same way on both sides.

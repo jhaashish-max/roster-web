@@ -1,0 +1,147 @@
+/* ───────────────────────── Design tokens ─────────────────────────
+   Light is the default. `html[data-theme="dark"]` overrides the same names.
+   Roster status colours are pastel fills with a dark text of the same hue. */
+:root {
+  color-scheme: light;
+
+  --bg-primary: #f7f8fb;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f4f9;
+  --bg-sunken: #eef1f6;
+  --bg-overlay: rgba(15, 23, 42, 0.42);
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #6b7280;
+
+  --accent-primary: #2563eb;
+  --accent-primary-strong: #1d4ed8;
+  --accent-soft: #e4ecfd;
+  --accent-success: #15803d;
+  --accent-warning: #b45309;
+  --accent-danger: #b91c1c;
+  --danger-soft: #fde8e8;
+  --success-soft: #dcf5e6;
+  --warning-soft: #fdf1d6;
+
+  --border-color: #e2e8f0;
+  --border-light: #eef2f7;
+  --border-strong: #cbd5e1;
+
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+  --shadow-md: 0 4px 10px -2px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.06);
+  --shadow-lg: 0 14px 30px -8px rgb(15 23 42 / 0.16);
+  --shadow-dropdown: 0 8px 24px rgba(15, 23, 42, 0.12);
+  --shadow-toast: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --weekend-bg: #f6f7fa;
+  --today-bg: #eaf1fe;
+  --focus-ring: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--accent-primary);
+
+  /* Pastel status palette (fill / text) */
+  --c-morning-bg: #d9f2e3;   --c-morning-fg: #14532d;
+  --c-afternoon-bg: #dbe7fb; --c-afternoon-fg: #1e3a8a;
+  --c-night-bg: #cfc8f5;     --c-night-fg: #2e1f7a;
+  --c-oncall-bg: #fde2c8;    --c-oncall-fg: #7c2d12;
+  --c-pl-bg: #fdf0b8;        --c-pl-fg: #713f12;
+  --c-sl-bg: #fcd9c4;        --c-sl-fg: #7c2d12;
+  --c-ul-bg: #f1e4cf;        --c-ul-fg: #6b4e16;
+  --c-wo-bg: #ffe6b3;        --c-wo-fg: #78350f;
+  --c-wl-bg: #fbd5d5;        --c-wl-fg: #881337;
+  --c-wfh-bg: #cdf1ef;       --c-wfh-fg: #134e4a;
+  --c-oh-bg: #ecd9f7;        --c-oh-fg: #6b21a8;
+  --c-holiday-bg: #f6d3ec;   --c-holiday-fg: #86198f;
+  --c-available-bg: #e3f0d8; --c-available-fg: #365314;
+  --c-exit-bg: #eceff3;      --c-exit-fg: #64748b;
+  --c-other-bg: #f1f5f9;     --c-other-fg: #475569;
+  --c-working-bg: #e2e8f0;   --c-working-fg: #1f2937;
+
+  /* Shrinkage tiers reuse the palette */
+  --shrink-zero-bg: var(--c-morning-bg); --shrink-zero-fg: var(--c-morning-fg);
+  --shrink-low-bg: var(--c-pl-bg);       --shrink-low-fg: var(--c-pl-fg);
+  --shrink-mid-bg: var(--c-wo-bg);       --shrink-mid-fg: var(--c-wo-fg);
+  --shrink-high-bg: var(--c-wl-bg);      --shrink-high-fg: var(--c-wl-fg);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-primary: #0f1420;
+  --bg-secondary: #161c2a;
+  --bg-card: #171e2d;
+  --bg-hover: #1f2739;
+  --bg-sunken: #121826;
+  --bg-overlay: rgba(2, 6, 23, 0.6);
+
+  --text-primary: #e5e9f2;
+  --text-secondary: #b3bccc;
+  --text-muted: #8b95a8;
+
+  --accent-primary: #7aa2ff;
+  --accent-primary-strong: #9ab8ff;
+  --accent-soft: #223159;
+  --accent-success: #6ee7a0;
+  --accent-warning: #fbbf24;
+  --accent-danger: #fca5a5;
+  --danger-soft: #3b1d22;
+  --success-soft: #16301f;
+  --warning-soft: #3a2c12;
+
+  --border-color: #273147;
+  --border-light: #202939;
+  --border-strong: #354262;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 10px -2px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 14px 30px -8px rgb(0 0 0 / 0.6);
+  --shadow-dropdown: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-toast: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+
+  --weekend-bg: #141a27;
+  --today-bg: #1c2742;
+
+  --c-morning-bg: color-mix(in srgb, #86efac 22%, var(--bg-card));   --c-morning-fg: #d9f2e3;
+  --c-afternoon-bg: color-mix(in srgb, #93c5fd 22%, var(--bg-card)); --c-afternoon-fg: #dbe7fb;
+  --c-night-bg: color-mix(in srgb, #a78bfa 30%, var(--bg-card));     --c-night-fg: #ddd6fe;
+  --c-oncall-bg: color-mix(in srgb, #fdba74 22%, var(--bg-card));    --c-oncall-fg: #fde2c8;
+  --c-pl-bg: color-mix(in srgb, #fde047 22%, var(--bg-card));        --c-pl-fg: #fdf0b8;
+  --c-sl-bg: color-mix(in srgb, #fdba74 22%, var(--bg-card));        --c-sl-fg: #fcd9c4;
+  --c-ul-bg: color-mix(in srgb, #d6b98c 22%, var(--bg-card));        --c-ul-fg: #f1e4cf;
+  --c-wo-bg: color-mix(in srgb, #fbbf24 22%, var(--bg-card));        --c-wo-fg: #ffe6b3;
+  --c-wl-bg: color-mix(in srgb, #fda4af 22%, var(--bg-card));        --c-wl-fg: #fbd5d5;
+  --c-wfh-bg: color-mix(in srgb, #5eead4 22%, var(--bg-card));       --c-wfh-fg: #cdf1ef;
+  --c-oh-bg: color-mix(in srgb, #d8b4fe 22%, var(--bg-card));        --c-oh-fg: #eadcf7;
+  --c-holiday-bg: color-mix(in srgb, #f0abfc 24%, var(--bg-card));   --c-holiday-fg: #f5d0fe;
+  --c-available-bg: color-mix(in srgb, #bef264 22%, var(--bg-card)); --c-available-fg: #e3f0d8;
+  --c-exit-bg: color-mix(in srgb, #94a3b8 16%, var(--bg-card));      --c-exit-fg: #9aa4b5;
+  --c-other-bg: color-mix(in srgb, #94a3b8 12%, var(--bg-card));     --c-other-fg: #cbd5e1;
+  --c-working-bg: #2a3448;                                           --c-working-fg: #e5e9f2;
+}
+
+/* Status kinds map to --k-bg / --k-fg so every surface (cells, chips, dots, blocks) shares one source. */
+.kind-shift.period-morning, .period-morning { --k-bg: var(--c-morning-bg); --k-fg: var(--c-morning-fg); }
+.kind-shift.period-afternoon, .period-afternoon { --k-bg: var(--c-afternoon-bg); --k-fg: var(--c-afternoon-fg); }
+.kind-shift.period-night, .period-night { --k-bg: var(--c-night-bg); --k-fg: var(--c-night-fg); }
+.kind-oncall { --k-bg: var(--c-oncall-bg); --k-fg: var(--c-oncall-fg); }
+.kind-wo { --k-bg: var(--c-wo-bg); --k-fg: var(--c-wo-fg); }
+.kind-pl { --k-bg: var(--c-pl-bg); --k-fg: var(--c-pl-fg); }
+.kind-sl { --k-bg: var(--c-sl-bg); --k-fg: var(--c-sl-fg); }
+.kind-ul { --k-bg: var(--c-ul-bg); --k-fg: var(--c-ul-fg); }
+.kind-wl { --k-bg: var(--c-wl-bg); --k-fg: var(--c-wl-fg); }
+.kind-wfh { --k-bg: var(--c-wfh-bg); --k-fg: var(--c-wfh-fg); }
+.kind-oh { --k-bg: var(--c-oh-bg); --k-fg: var(--c-oh-fg); }
+.kind-holiday { --k-bg: var(--c-holiday-bg); --k-fg: var(--c-holiday-fg); }
+.kind-available { --k-bg: var(--c-available-bg); --k-fg: var(--c-available-fg); }
+.kind-exit, .kind-na { --k-bg: var(--c-exit-bg); --k-fg: var(--c-exit-fg); }
+.kind-other { --k-bg: var(--c-other-bg); --k-fg: var(--c-other-fg); }
+.kind-empty { --k-bg: transparent; --k-fg: var(--text-muted); }
+.period-other { --k-bg: var(--c-other-bg); --k-fg: var(--c-other-fg); }

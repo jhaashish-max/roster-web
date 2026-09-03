@@ -14,5 +14,22 @@ export default defineConfig({
         secure: true
       }
     }
-  }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          vendor: ['date-fns', 'lucide-react', 'pusher-js'],
+        },
+      },
+    },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./vitest.setup.js'],
+    include: ['src/**/*.{test,spec}.{js,jsx}'],
+    css: false,
+  },
 })
