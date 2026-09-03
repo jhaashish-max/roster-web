@@ -277,3 +277,7 @@ html[data-theme="dark"] .segmented-btn.active { color: #0b1220; }
 .presence-avatar { position: relative; }
 .presence-avatar[data-name]::after { content: attr(data-name); position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%) translateY(-2px); background: var(--text-primary); color: var(--bg-card); font-size: 0.7rem; font-weight: 600; padding: 0.25rem 0.5rem; border-radius: 6px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.12s, transform 0.12s; z-index: 120; }
 .presence-avatar[data-name]:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Uniform status pills in people lists: same width for every status, never stretched to the card width */
+.status-chip-sm { min-width: 7.5rem; justify-content: center; align-self: flex-start; flex: 0 0 auto; }
+.agent-row-body { align-items: flex-start; }
